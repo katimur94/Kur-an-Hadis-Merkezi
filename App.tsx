@@ -1,0 +1,125 @@
+import React, { useState } from 'react';
+import QuranReader from './components/QuranReader';
+import HadithSearch from './components/HadithSearch';
+
+type View = 'home' | 'quran' | 'hadith';
+
+const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>);
+
+const App: React.FC = () => {
+    const [currentView, setCurrentView] = useState<View>('home');
+    const [isInfoModalOpen, setInfoModalOpen] = useState(false);
+
+    const navigateTo = (view: View) => {
+        setCurrentView(view);
+    };
+
+    const goHome = () => {
+        setCurrentView('home');
+    };
+
+    if (currentView === 'quran') {
+        return <QuranReader onGoHome={goHome} />;
+    }
+
+    if (currentView === 'hadith') {
+        return <HadithSearch onGoHome={goHome} />;
+    }
+
+    return (
+        <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center p-4 text-gray-800 dark:text-gray-200">
+            <header className="text-center mb-12">
+                <h1 className="text-5xl font-bold mb-2">Kur'an & Hadis Merkezi</h1>
+                <p className="text-xl text-gray-500 dark:text-gray-400">Kişisel Kur'an Okuyucu ve Hadis Arama Motorunuz</p>
+            </header>
+            <main className="w-full max-w-4xl flex flex-col items-center">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+                    <button
+                        onClick={() => navigateTo('quran')}
+                        className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left"
+                    >
+                        <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Kur'an-ı Kerim Okuyucu</h2>
+                        <p className="text-gray-600 dark:text-gray-300">Kur'an'ı Kerim'i farklı kârilerle okuyun, dinleyin ve mealini inceleyin.</p>
+                    </button>
+                    <button
+                        onClick={() => navigateTo('hadith')}
+                        className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left"
+                    >
+                        <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Yapay Zeka ile Hadis Ara</h2>
+                        <p className="text-gray-600 dark:text-gray-300">İlgilendiğiniz konulardaki hadisleri yapay zeka yardımıyla kolayca bulun.</p>
+                    </button>
+                </div>
+                <div className="mt-8">
+                     <button
+                        onClick={() => setInfoModalOpen(true)}
+                        className="px-6 py-3 bg-transparent text-teal-600 dark:text-teal-400 font-semibold rounded-lg border-2 border-teal-600 dark:border-teal-400 hover:bg-teal-600 hover:text-white dark:hover:bg-teal-400 dark:hover:text-gray-900 transition-colors duration-300"
+                    >
+                        Uygulamayı Tanı
+                    </button>
+                </div>
+            </main>
+            <footer className="mt-12 text-center text-gray-500 dark:text-gray-400 text-sm">
+                <p>&copy; 2024 - Kişisel İslami Kaynaklar Platformu</p>
+            </footer>
+
+            {isInfoModalOpen && (
+                <div
+                    className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 animate-fade-in"
+                    onClick={() => setInfoModalOpen(false)}
+                >
+                    <div
+                        className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col animate-scale-in"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 rounded-t-xl">
+                            <h2 className="text-2xl font-bold">Uygulama Rehberi</h2>
+                            <button
+                                onClick={() => setInfoModalOpen(false)}
+                                className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+                            >
+                                <CloseIcon className="w-6 h-6" />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto space-y-6">
+                            <section>
+                                <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Kur'an-ı Kerim Okuyucu</h3>
+                                <p className="text-gray-600 dark:text-gray-300 mb-4">Bu bölümde Kur'an-ı Kerim'i okuyabilir, dinleyebilir ve mealini inceleyebilirsiniz. Bölüm, profesyonel bir deneyim sunmak için birçok özelliğe sahiptir:</p>
+                                <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
+                                    <li><strong>İki Farklı Görünüm:</strong> Üst menüden "Kur'an Görünümü" (sadece Arapça metin) ve "Meal Görünümü" (Arapça ve Türkçe meal) arasında geçiş yapabilirsiniz.</li>
+                                    <li><strong>Dinamik Dinleme Modları:</strong>
+                                        <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
+                                             <li><strong>Cüz & Sure Modu:</strong> Sol paneldeki Cüz veya Sure listesinden herhangi birinin yanındaki 'Oynat' ikonuna basarak o bölümün tamamını kesintisiz dinleyebilirsiniz.</li>
+                                              <li><strong>Sayfa Modu:</strong> Üst paneldeki ana 'Oynat' butonuna basarak sadece o an açık olan sayfayı dinleyebilirsiniz.</li>
+                                             <li><strong>Tek Ayet Modu:</strong> Herhangi bir ayetin metnine tıklayarak sadece o ayeti dinleyebilirsiniz.</li>
+                                        </ul>
+                                    </li>
+                                    <li><strong>Canlı Takip ve Otomatik Sayfa Geçişi:</strong> Cüz veya Sure dinlerken, okunan ayet canlı olarak vurgulanır. Okuma sayfanın sonuna geldiğinde, uygulama otomatik olarak bir sonraki sayfaya geçer.</li>
+                                    <li><strong>Ayarlar:</strong> Sağ üstteki dişli ikonuna basarak Ayarlar menüsünü açabilirsiniz. Buradan onlarca farklı kârî (okuyucu) arasından seçim yapabilir ve "Kur'an Görünümü" için yazı tipi boyutunu ayarlayabilirsiniz.</li>
+                                    <li><strong>İlerleme Kaydı:</strong> Uygulama, en son kaldığınız sayfayı ve ayarlarınızı otomatik olarak kaydeder. Geri döndüğünüzde kaldığınız yerden devam edersiniz.</li>
+                                </ul>
+                            </section>
+                            <section>
+                                <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Yapay Zeka ile Hadis Ara</h3>
+                                <p className="text-gray-600 dark:text-gray-300 mb-4">Bu bölümde, Gemini yapay zeka modelini kullanarak sahih hadis kaynaklarında arama yapabilirsiniz.</p>
+                                <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
+                                    <li><strong>Doğal Dilde Arama:</strong> Arama kutusuna "Namazın önemi" veya "Orucun faziletleri nelerdir?" gibi normal bir cümle yazarak arama yapabilirsiniz.</li>
+                                    <li><strong>Güvenilir Kaynaklar:</strong> Yapay zeka, sadece Sahih-i Buhari, Müslim gibi güvenilir kaynaklardan hadisleri bulur ve her hadisin altında kaynağını (kitap, bölüm, hadis no) detaylı olarak belirtir.</li>
+                                    <li><strong>Kontrollü Sonuçlar:</strong> Yapay zeka, bir konuyla ilgili bulduğu hadisleri size grup grup sunar. Daha fazla sonuç görmek isterseniz "Daha Fazla Göster" butonunu kullanabilirsiniz.</li>
+                                </ul>
+                            </section>
+                            <section>
+                                 <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Genel Özellikler</h3>
+                                <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
+                                    <li><strong>Karanlık Mod:</strong> Uygulama, cihazınızın temasına otomatik olarak uyum sağlar.</li>
+                                    <li><strong>Mobil Uyumluluk:</strong> Hem masaüstü hem de mobil cihazlarda rahat bir kullanım için tasarlanmıştır.</li>
+                                </ul>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default App;
