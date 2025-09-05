@@ -59,7 +59,7 @@ const App: React.FC = () => {
                 </div>
             </main>
             <footer className="mt-12 text-center text-gray-500 dark:text-gray-400 text-sm">
-                <p>&copy; 2024 - Kişisel İslami Kaynaklar Platformu</p>
+                <p>&copy; 2025 - Timur Kalaycı. Hayır dualarınızı beklerim. Rabbim bu site vesilesiyle ilminizi artırsın.</p>
             </footer>
 
             {isInfoModalOpen && (
