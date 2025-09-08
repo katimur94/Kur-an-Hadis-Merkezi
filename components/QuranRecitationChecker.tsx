@@ -318,7 +318,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
     setError(userFriendlyError);
     setRecitationStatus('idle');
 }
-    };
+    
     
     const handleAnalyze = async () => {
         const fullRecitedText = pageWords.filter((_, idx) => sessionWordStatuses[idx]).join(' ');
