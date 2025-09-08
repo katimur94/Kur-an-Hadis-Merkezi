@@ -297,6 +297,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                     return prevLive;
                 });
             };
+          
            recognitionRef.current.onerror = (event) => {
     console.error("Speech recognition error", event.error, event.message);
     let userFriendlyError = "Ein unbekannter Mikrofon-Fehler ist aufgetreten.";
@@ -317,7 +318,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
     
     setError(userFriendlyError);
     setRecitationStatus('idle');
-}
+};
     
     
     const handleAnalyze = async () => {
