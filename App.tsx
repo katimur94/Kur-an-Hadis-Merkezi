@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import QuranReader from './components/QuranReader';
 import HadithSearch from './components/HadithSearch';
+import QuranRecitationChecker from './components/QuranRecitationChecker';
 
-type View = 'home' | 'quran' | 'hadith';
+type View = 'home' | 'quran' | 'hadith' | 'recitation';
 
-const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>);
+const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>);
 
 const App: React.FC = () => {
     const [currentView, setCurrentView] = useState<View>('home');
@@ -26,14 +27,18 @@ const App: React.FC = () => {
         return <HadithSearch onGoHome={goHome} />;
     }
 
+    if (currentView === 'recitation') {
+        return <QuranRecitationChecker onGoHome={goHome} />;
+    }
+
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center p-4 text-gray-800 dark:text-gray-200">
             <header className="text-center mb-12">
                 <h1 className="text-5xl font-bold mb-2">Kur'an & Hadis Merkezi</h1>
                 <p className="text-xl text-gray-500 dark:text-gray-400">Kişisel Kur'an Okuyucu ve Hadis Arama Motorunuz</p>
             </header>
-            <main className="w-full max-w-4xl flex flex-col items-center">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+            <main className="w-full max-w-6xl flex flex-col items-center">
+                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full">
                     <button
                         onClick={() => navigateTo('quran')}
                         className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left"
@@ -47,6 +52,13 @@ const App: React.FC = () => {
                     >
                         <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Yapay Zeka ile Hadis Ara</h2>
                         <p className="text-gray-600 dark:text-gray-300">İlgilendiğiniz konulardaki hadisleri yapay zeka yardımıyla kolayca bulun.</p>
+                    </button>
+                    <button
+                        onClick={() => navigateTo('recitation')}
+                        className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left"
+                    >
+                        <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Kuran Okuma ve Hata Tespiti</h2>
+                        <p className="text-gray-600 dark:text-gray-300">Ayetleri okuyun ve yapay zeka ile telaffuz hatalarınızı tespit edin.</p>
                     </button>
                 </div>
                 <div className="mt-8">
@@ -96,6 +108,20 @@ const App: React.FC = () => {
                                     <li><strong>Canlı Takip ve Otomatik Sayfa Geçişi:</strong> Cüz veya Sure dinlerken, okunan ayet canlı olarak vurgulanır. Okuma sayfanın sonuna geldiğinde, uygulama otomatik olarak bir sonraki sayfaya geçer.</li>
                                     <li><strong>Ayarlar:</strong> Sağ üstteki dişli ikonuna basarak Ayarlar menüsünü açabilirsiniz. Buradan onlarca farklı kârî (okuyucu) arasından seçim yapabilir ve "Kur'an Görünümü" için yazı tipi boyutunu ayarlayabilirsiniz.</li>
                                     <li><strong>İlerleme Kaydı:</strong> Uygulama, en son kaldığınız sayfayı ve ayarlarınızı otomatik olarak kaydeder. Geri döndüğünüzde kaldığınız yerden devam edersiniz.</li>
+                                </ul>
+                            </section>
+                             <section>
+                                <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Kuran Okuma ve Hata Tespiti</h3>
+                                <p className="text-gray-600 dark:text-gray-300 mb-4">Bu gelişmiş bölümde, Kur'an-ı Kerim'i sayfa sayfa okuyarak kıraatinizi pratik edebilir ve yapay zeka ile tecvid hatalarınızı tespit edebilirsiniz. Sistem, okumanızı canlı olarak takip eder ve ilerlemenizi otomatik olarak kaydeder.</p>
+                                <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
+                                    <li><strong>Canlı Takip:</strong> Mikrofonu başlattığınızda, okuduğunuz kelimeler anında tespit edilir ve doğru okunanlar metin üzerinde mavi renkle vurgulanır.</li>
+                                    <li><strong>Kalıcı İlerleme Kaydı:</strong> Okuduğunuz her kelime sayfa bazında kaydedilir. Uygulamayı kapatıp açsanız bile, daha önce doğru okuduğunuz yerler mavi olarak işaretli kalır.</li>
+                                    <li><strong>Akıllı Devam Etme:</strong> Bir sayfada okumayı durdurup tekrar başladığınızda, sistem kaldığınız ilk okunmamış kelimeden devam etmenizi sağlar.</li>
+                                    <li><strong>Detaylı Kenar Çubuğu:</strong> Sol kenar çubuğu interaktif bir menüdür. Surelere tıklayarak içerdikleri tüm sayfaları ve her bir sayfanın ilerleme durumunu (tamamlandı ✔, devam ediyor ▶, başlanmadı ○) görebilirsiniz.</li>
+                                    <li><strong>İsteğe Bağlı Analiz:</strong> Okumanızı bitirdikten sonra, üst menüdeki "Analiz Et" butonuna basarak yapay zeka analizi başlatabilirsiniz.</li>
+                                    <li><strong>Tecvid Hata Tespiti:</strong> Analiz sonucunda, yapay zeka tarafından tespit edilen tecvid hataları metin üzerinde kırmızı renkle işaretlenir.</li>
+                                    <li><strong>İnteraktif Hata Detayları:</strong> Kırmızı ile işaretlenmiş bir kelimeye tıkladığınızda, hatanın türünü, açıklamasını ve ilgili tecvid kuralını gösteren bir pencere açılır.</li>
+                                    <li><strong>Sıfırlama:</strong> "Sıfırla" butonu ile mevcut sayfanın tüm ilerlemesini (mavi ve kırmızı işaretler) temizleyerek yeniden pratik yapabilirsiniz.</li>
                                 </ul>
                             </section>
                             <section>
