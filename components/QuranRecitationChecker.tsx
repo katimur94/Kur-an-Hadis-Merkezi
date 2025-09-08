@@ -297,15 +297,27 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                     return prevLive;
                 });
             };
-            recognitionRef.current.onerror = (event) => {
-                console.error("Speech recognition error", event.error);
-                if (event.error !== 'no-speech') {
-                  setError("Mikrofon hatası: " + event.error);
-                }
-                setRecitationStatus('idle');
-            }
-            recognitionRef.current.start();
-        }
+           recognitionRef.current.onerror = (event) => {
+    console.error("Speech recognition error", event.error, event.message);
+    let userFriendlyError = "Ein unbekannter Mikrofon-Fehler ist aufgetreten.";
+
+    switch (event.error) {
+        case 'not-allowed':
+            userFriendlyError = "Mikrofon-Zugriff verweigert. Bitte überprüfe die Berechtigungen für Chrome in den Handy-Einstellungen.";
+            break;
+        case 'service-not-allowed':
+            userFriendlyError = "Mikrofon-Zugriff vom System blockiert. Prüfe, ob eine andere App das Mikrofon nutzt.";
+            break;
+
+        case 'no-speech':
+            // Diesen Fehler ignorieren wir, da er nur bedeutet, dass nichts gesagt wurde.
+            setRecitationStatus('recorded'); // Gehe zum nächsten Status, als ob die Aufnahme beendet wurde.
+            return; // Beende die Funktion hier, um keine Fehlermeldung anzuzeigen.
+    }
+    
+    setError(userFriendlyError);
+    setRecitationStatus('idle');
+}
     };
     
     const handleAnalyze = async () => {
