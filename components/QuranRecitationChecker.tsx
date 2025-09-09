@@ -316,8 +316,14 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
             return; // Beende die Funktion hier, um keine Fehlermeldung anzuzeigen.
     }
     
-    setError(userFriendlyError);
-    setRecitationStatus('idle');
+     setError(userFriendlyError);
+  setRecitationStatus('idle');
+};                     // onerror biter
+}                      // <<< else bloğu burada kapanmalı
+};                     // <<< handleReciteClick fonksiyonu burada kapanmalı
+
+const handleAnalyze = async () => {
+  // ...
 };
     
     
