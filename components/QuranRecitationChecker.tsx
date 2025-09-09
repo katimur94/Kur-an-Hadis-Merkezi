@@ -240,38 +240,43 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
 
     // --- Recitation & Navigation ---
     const handleReciteClick = () => {
-        if (recitationStatus === 'recording') {
-            recognitionRef.current?.stop();
-        } else {
-            setLiveTranscript('');
-            setLiveWordStatuses({});
-            setAnalysisResults([]); // Clear old analysis on new recording
-            localStorage.removeItem(`recitationAnalysis_p${currentPage}`);
-            
-            setRecitationStatus('recording');
-            setPageProgress(prev => ({...prev, [currentPage]: prev[currentPage] === 'completed' ? 'completed' : 'in_progress' }));
-         }
-            const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognitionAPI) {
-              setError("Tarayıcınız konuşma tanımayı desteklemiyor.");
-              return;
+    if (recitationStatus === 'recording') {
+        recognitionRef.current?.stop();
+    } else {
+        setLiveTranscript('');
+        setLiveWordStatuses({});
+        setAnalysisResults([]); // Clear old analysis on new recording
+        localStorage.removeItem(`recitationAnalysis_p${currentPage}`);
+        
+        setRecitationStatus('recording');
+        setPageProgress(prev => ({
+            ...prev,
+            [currentPage]: prev[currentPage] === 'completed' ? 'completed' : 'in_progress'
+        }));
+
+        const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognitionAPI) {
+            setError("Tarayıcınız konuşma tanımayı desteklemiyor.");
+            return;
+        }
+
+        recognitionRef.current = new SpeechRecognitionAPI();
+        recognitionRef.current.continuous = true;
+        recognitionRef.current.interimResults = true;
+        recognitionRef.current.lang = 'ar-SA';
+
+        recognitionRef.current.onresult = (event) => {
+            let fullTranscript = '';
+            for (let i = 0; i < event.results.length; i++) {
+                const result = event.results[i];
+                fullTranscript += result[0].transcript;
             }
-            recognitionRef.current = new SpeechRecognitionAPI();
-            recognitionRef.current.continuous = true;
-            recognitionRef.current.interimResults = true;
-            recognitionRef.current.lang = 'ar-SA';
-            recognitionRef.current.onresult = (event) => {
-                let fullTranscript = '';
-                // FIX: Type 'SpeechRecognitionResultList' must have a '[Symbol.iterator]()' method that returns an iterator. Use a standard for-loop.
-                for (let i = 0; i < event.results.length; i++) {
-                   const result = event.results[i];
-                   fullTranscript += result[0].transcript;
-                }
-                setLiveTranscript(fullTranscript);
-            };
-            recognitionRef.current.onstart = () => setRecitationStatus('recording');
-            recognitionRef.current.onend = () => {
-                setRecitationStatus('recorded');
+            setLiveTranscript(fullTranscript);
+        };
+
+        recognitionRef.current.onstart = () => setRecitationStatus('recording');
+        recognitionRef.current.onend = () => {
+            setRecitationStatus('recorded');
                 
                 // Finalize and save progress
                 setLiveWordStatuses(prevLive => {
@@ -299,28 +304,28 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
             };
           
            recognitionRef.current.onerror = (event) => {
-    console.error("Speech recognition error", event.error, event.message);
-    let userFriendlyError = "Ein unbekannter Mikrofon-Fehler ist aufgetreten.";
+            console.error("Speech recognition error", event.error, event.message);
+            let userFriendlyError = "Ein unbekannter Mikrofon-Fehler ist aufgetreten.";
 
-    switch (event.error) {
-        case 'not-allowed':
-            userFriendlyError = "Mikrofon-Zugriff verweigert. Bitte überprüfe die Berechtigungen für Chrome in den Handy-Einstellungen.";
-            break;
-        case 'service-not-allowed':
-            userFriendlyError = "Mikrofon-Zugriff vom System blockiert. Prüfe, ob eine andere App das Mikrofon nutzt.";
-            break;
+            switch (event.error) {
+                case 'not-allowed':
+                    userFriendlyError = "Mikrofon-Zugriff verweigert. Bitte überprüfe die Berechtigungen für Chrome in den Handy-Einstellungen.";
+                    break;
+                case 'service-not-allowed':
+                    userFriendlyError = "Mikrofon-Zugriff vom System blockiert. Prüfe, ob eine andere App das Mikrofon nutzt.";
+                    break;
+                case 'no-speech':
+                    setRecitationStatus('recorded');
+                    return;
+            }
 
-        case 'no-speech':
-            // Diesen Fehler ignorieren wir, da er nur bedeutet, dass nichts gesagt wurde.
-            setRecitationStatus('recorded'); // Gehe zum nächsten Status, als ob die Aufnahme beendet wurde.
-            return; // Beende die Funktion hier, um keine Fehlermeldung anzuzeigen.
+            setError(userFriendlyError);
+            setRecitationStatus('idle');
+        };
+
+        recognitionRef.current.start(); // 👈 başlatmayı unutma
     }
-    
-     setError(userFriendlyError);
-  setRecitationStatus('idle');
-};                     // onerror biter
-}                      // <<< else bloğu burada kapanmalı
-};                     // <<< handleReciteClick fonksiyonu burada kapanmalı
+};                   // <<< handleReciteClick fonksiyonu burada kapanmalı
 
 const handleAnalyze = async () => {
   // ...
