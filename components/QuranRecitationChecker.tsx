@@ -250,7 +250,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
             
             setRecitationStatus('recording');
             setPageProgress(prev => ({...prev, [currentPage]: prev[currentPage] === 'completed' ? 'completed' : 'in_progress' }));
-         };
+         }
             const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognitionAPI) {
               setError("Tarayıcınız konuşma tanımayı desteklemiyor.");
