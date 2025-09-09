@@ -276,32 +276,40 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
 
         recognitionRef.current.onstart = () => setRecitationStatus('recording');
         recognitionRef.current.onend = () => {
-            setRecitationStatus('recorded');
-                
-                // Finalize and save progress
-                setLiveWordStatuses(prevLive => {
-                    const newCorrectWords: WordStatusCollection = { ...sessionWordStatuses };
-                    let madeChanges = false;
-                    for (const index in prevLive) {
-                        if (prevLive[index].status === 'correct') {
-                            newCorrectWords[Number(index)] = 'correct';
-                            madeChanges = true;
-                        }
-                    }
+    // Prüfe, ob wir immer noch im Aufnahmemodus sein sollten.
+    // Wenn ja, starte die Aufnahme sofort neu.
+    if (recitationStatus === 'recording') {
+        console.log("Recognition stopped unexpectedly, restarting...");
+        recognitionRef.current?.start(); // Sofort neu starten
+        return; // Verhindert, dass der Status auf 'recorded' gesetzt wird.
+    }
 
-                    if (madeChanges) {
-                        setSessionWordStatuses(newCorrectWords);
-                        localStorage.setItem(`recitationWords_p${currentPage}`, JSON.stringify(newCorrectWords));
+    // Nur wenn der Stopp beabsichtigt war (durch den Nutzer),
+    // fahre mit der normalen Logik fort.
+    setRecitationStatus('recorded');
+    // ... Dein Code zum Finalisieren und Speichern des Fortschritts ...
+    setLiveWordStatuses(prevLive => {
+        const newCorrectWords: WordStatusCollection = { ...sessionWordStatuses };
+        let madeChanges = false;
+        for (const index in prevLive) {
+            if (prevLive[index].status === 'correct') {
+                newCorrectWords[Number(index)] = 'correct';
+                madeChanges = true;
+            }
+        }
 
-                        // Check for completion
-                        const lastWordIndex = pageWords.length - 1;
-                        if (lastWordIndex >= 0 && newCorrectWords[lastWordIndex]) {
-                            setPageProgress(prevProg => ({ ...prevProg, [currentPage]: 'completed' }));
-                        }
-                    }
-                    return prevLive;
-                });
-            };
+        if (madeChanges) {
+            setSessionWordStatuses(newCorrectWords);
+            localStorage.setItem(`recitationWords_p${currentPage}`, JSON.stringify(newCorrectWords));
+            
+            const lastWordIndex = pageWords.length - 1;
+            if (lastWordIndex >= 0 && newCorrectWords[lastWordIndex]) {
+                setPageProgress(prevProg => ({ ...prevProg, [currentPage]: 'completed' }));
+            }
+        }
+        return prevLive;
+    });
+};
           
            recognitionRef.current.onerror = (event) => {
             console.error("Speech recognition error", event.error, event.message);
