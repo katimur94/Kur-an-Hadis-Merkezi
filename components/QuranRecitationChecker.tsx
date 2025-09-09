@@ -326,10 +326,6 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         recognitionRef.current.start(); // 👈 başlatmayı unutma
     }
 };                   // <<< handleReciteClick fonksiyonu burada kapanmalı
-
-const handleAnalyze = async () => {
-  // ...
-};
     
     
     const handleAnalyze = async () => {
