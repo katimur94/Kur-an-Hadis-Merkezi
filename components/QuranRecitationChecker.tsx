@@ -425,7 +425,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                                             <li key={page}>
                                                 <button onClick={() => jumpToPage(page)} className="w-full flex items-center justify-center p-2 text-xs rounded-md border dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
                                                     <PageProgressIndicator status={pageProgress[page]} />
-                        _BOS_                     <span className="ml-1.5">{page}</span>
+                                          <span className="ml-1.5">{page}</span>
                                                 </button>
                                             </li>
                                         ))}
