@@ -73,13 +73,11 @@ const ChevronLeftIcon: React.FC<{ className?: string }> = ({ className }) => (<s
 const ChevronRightIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>);
 const AnalyzeIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0 1 20.25 6v1.5m0 9V18A2.25 2.25 0 0 1 18 20.25h-1.5m-9 0H6A2.25 2.25 0 0 1 3.75 18v-1.5M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>);
 
-
 const TOTAL_PAGES = 604;
 const ARABIC_NUMERALS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
 const toArabicNumeral = (n: number) => n.toString().split('').map(digit => ARABIC_NUMERALS[parseInt(digit)]).join('');
 const getPageWords = (pageData: CombinedAyah[]): string[] => pageData.flatMap(ayah => ayah.arabicText.split(' ').filter(Boolean));
 
-// --- TEXT PROCESSING HELPERS ---
 const normalizeText = (text: string): string => text.replace(/[\u064B-\u0652]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').trim();
 const levenshtein = (a: string, b: string): number => {
   const matrix = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(null));
@@ -100,29 +98,24 @@ const isSimilar = (a: string, b: string, threshold = 0.5): boolean => {
     return (distance / longerLength) < threshold;
 };
 
-
 const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
-    // Data & Navigation State
     const [surahList, setSurahList] = useState<SurahSummary[]>([]);
     const [currentPage, setCurrentPage] = useState<number>(() => parseInt(localStorage.getItem('recitationLastPage') || '1'));
     const [pageData, setPageData] = useState<CombinedAyah[]>([]);
     const [pageWords, setPageWords] = useState<string[]>([]);
     
-    // UI State
     const [isLoadingPage, setIsLoadingPage] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isSidebarOpen, setSidebarOpen] = useState(true);
     const [correctionPopup, setCorrectionPopup] = useState<CorrectionPopupData | null>(null);
     const [expandedSurah, setExpandedSurah] = useState<number | null>(null);
 
-    // Recitation State
     const [recitationStatus, setRecitationStatus] = useState<RecitationStatus>('idle');
     const [liveTranscript, setLiveTranscript] = useState('');
     const [sessionWordStatuses, setSessionWordStatuses] = useState<WordStatusCollection>({});
     const [liveWordStatuses, setLiveWordStatuses] = useState<Record<number, LiveWordStatus>>({});
     const [analysisResults, setAnalysisResults] = useState<PageAnalysis>([]);
 
-    // Progress Tracking State
     const [pageProgress, setPageProgress] = useState<Record<number, PageStatus>>(() => {
         try {
             const item = window.localStorage.getItem('recitationProgressV2');
@@ -136,14 +129,11 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         } catch (error) { console.error("Failed to save progress", error); }
     }, [pageProgress]);
 
-
-    // Refs
     const recognitionRef = useRef<SpeechRecognition | null>(null);
     const wordRefs = useRef<Record<number, HTMLSpanElement | null>>({});
     const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
     const userStoppedRecording = useRef(false);
 
-    // --- Effects ---
     const handleReset = useCallback(() => {
         setError(null);
         setLiveTranscript('');
@@ -234,12 +224,12 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         setLiveWordStatuses(newStatuses);
     }, [liveTranscript, recitationStatus, pageWords, sessionWordStatuses]);
 
-    const handleReciteClick = () => {
+    const handleReciteClick = () => {
         if (recitationStatus === 'recording') {
-            userStoppedRecording.current = true; // WICHTIG: Wir merken uns, dass DU gestoppt hast.
+            userStoppedRecording.current = true;
             recognitionRef.current?.stop();
         } else {
-            userStoppedRecording.current = false; // WICHTIG: Wir starten eine neue Aufnahme.
+            userStoppedRecording.current = false;
             
             setLiveTranscript('');
             setLiveWordStatuses({});
@@ -435,15 +425,14 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                                             <li key={page}>
                                                 <button onClick={() => jumpToPage(page)} className="w-full flex items-center justify-center p-2 text-xs rounded-md border dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700">
                                                     <PageProgressIndicator status={pageProgress[page]} />
-                                                    <span className="ml-1.5">{page}</span>
+                        _BOS_                     <span className="ml-1.5">{page}</span>
                                                 </button>
-                            _BOS_
                                             </li>
                                         ))}
                                     </ul>
                                 </div>
                             )}
-          _EOS_                 </li>
+                        </li>
                     ))}
                 </ul>
             </aside>
@@ -470,7 +459,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                                <span>{pageData[0]?.surah.name}</span>
                            </div>
                            <div dir="rtl" className="text-center font-amiri" style={{ fontSize: '24px', lineHeight: 2.5 }}>
-            _BOS_                 {pageData.map(ayah => (
+                                {pageData.map(ayah => (
                                     <div key={ayah.number} className="inline-block">
                                         {ayah.arabicText.split(' ').filter(Boolean).map((word) => {
                                             wordCounter++;
