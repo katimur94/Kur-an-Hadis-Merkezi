@@ -57,8 +57,8 @@ const App: React.FC = () => {
                         onClick={() => navigateTo('recitation')}
                         className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left"
                     >
-                        <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Kuran Okuma ve Hata Tespiti (Beta/Deneme)</h2>
-                        <p className="text-gray-600 dark:text-gray-300">Ayetleri okuyun ve yapay zeka ile telaffuz ve Tecvid hatalarınızı tespit edin.</p>
+                        <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Kuran Okuma ve Hata Tespiti</h2>
+                        <p className="text-gray-600 dark:text-gray-300">Ayetleri okuyun ve yapay zeka ile telaffuz hatalarınızı tespit edin.</p>
                     </button>
                 </div>
                 <div className="mt-8">
@@ -71,7 +71,7 @@ const App: React.FC = () => {
                 </div>
             </main>
             <footer className="mt-12 text-center text-gray-500 dark:text-gray-400 text-sm">
-                <p>&copy; 2025 - Timur Kalaycı. Hayır dualarınızı beklerim. Rabbim bu site vesilesiyle ilminizi artırsın.</p>
+                <p>&copy; 2024 - Kişisel İslami Kaynaklar Platformu</p>
             </footer>
 
             {isInfoModalOpen && (
