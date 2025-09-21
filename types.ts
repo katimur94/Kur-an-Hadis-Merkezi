@@ -27,9 +27,32 @@ export interface Reciter {
 }
 
 // AI Hadith Search Types
+export interface SourceInfo {
+  book: string;
+  chapter: string;
+  hadithNumber: string;
+  volume?: string;
+  pageNumber?: string;
+}
+
 export interface HadithResult {
-  text: string;
-  source: string;
+  arabicText: string;
+  turkishText: string;
+  narrator: string;
+  source: SourceInfo;
+}
+
+export interface FiqhSourceInfo {
+  bookTitle: string;
+  author?: string;
+  volume?: string;
+  pageNumber?: string;
+}
+
+export interface ImamCommentary {
+  imamName: string; // e.g., "İmam Ebu Hanife (Hanefi Mezhebi)"
+  commentary: string;
+  source: FiqhSourceInfo;
 }
 
 export interface AIHadithResponse {
