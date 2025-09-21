@@ -72,12 +72,24 @@ const MenuIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmln
 const ChevronLeftIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" /></svg>);
 const ChevronRightIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>);
 const AnalyzeIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 3.75H6A2.25 2.25 0 0 0 3.75 6v1.5M16.5 3.75H18A2.25 2.25 0 0 1 20.25 6v1.5m0 9V18A2.25 2.25 0 0 1 18 20.25h-1.5m-9 0H6A2.25 2.25 0 0 1 3.75 18v-1.5M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>);
-
+const SettingsIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.438.995s.145.755.438.995l1.003.827c.424.35.534.954.26 1.431l-1.296-2.247a1.125 1.125 0 0 1-1.37.49l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.645-.87a6.52 6.52 0 0 1-.22-.127c-.324-.196-.72-.257-1.075-.124l-1.217.456a1.125 1.125 0 0 1-1.37-.49l-1.296-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.437-.995s-.145-.755-.437-.995l-1.004-.827a1.125 1.125 0 0 1-.26-1.431l1.296-2.247a1.125 1.125 0 0 1 1.37-.49l1.217.456c.355.133.75.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.213-1.28Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>);
 
 const TOTAL_PAGES = 604;
 const ARABIC_NUMERALS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
 const toArabicNumeral = (n: number) => n.toString().split('').map(digit => ARABIC_NUMERALS[parseInt(digit)]).join('');
 const getPageWords = (pageData: CombinedAyah[]): string[] => pageData.flatMap(ayah => ayah.arabicText.split(' ').filter(Boolean));
+const FONT_LIST = [
+    { name: 'Mushaf (Amiri Quran)', value: "'Amiri Quran', serif" },
+    { name: 'KFGQPC Hafs (Amiri)', value: "'Amiri', serif" },
+    { name: 'Scheherazade', value: "'Scheherazade New', serif" },
+    { name: 'Me Quran (Noto Naskh)', value: "'Noto Naskh Arabic', serif" },
+    { name: 'PDMS Saleem (Lateef)', value: "'Lateef', cursive" },
+    { name: 'IndoPak (Noto Naskh)', value: "'Noto Naskh Arabic', serif" },
+    { name: 'Muhammadi (Reem Kufi)', value: "'Reem Kufi', sans-serif" },
+    { name: 'Markazi Text', value: "'Markazi Text', serif" },
+    { name: 'Cairo', value: "'Cairo', sans-serif" },
+    { name: 'Tajawal', value: "'Tajawal', sans-serif" },
+];
 
 // --- TEXT PROCESSING HELPERS ---
 const normalizeText = (text: string): string => text.replace(/[\u064B-\u0652]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').trim();
@@ -114,6 +126,10 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
     const [isSidebarOpen, setSidebarOpen] = useState(true);
     const [correctionPopup, setCorrectionPopup] = useState<CorrectionPopupData | null>(null);
     const [expandedSurah, setExpandedSurah] = useState<number | null>(null);
+    const [isSettingsOpen, setSettingsOpen] = useState(false);
+    const [fontSize, setFontSize] = useState<number>(() => parseInt(localStorage.getItem('recitationFontSize') || '24'));
+    const [fontFamily, setFontFamily] = useState<string>(() => localStorage.getItem('recitationFontFamily') || FONT_LIST[0].value);
+
 
     // Recitation State
     const [recitationStatus, setRecitationStatus] = useState<RecitationStatus>('idle');
@@ -200,6 +216,12 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
             .finally(() => setIsLoadingPage(false));
         localStorage.setItem('recitationLastPage', String(currentPage));
     }, [currentPage]);
+
+    // Save settings
+    useEffect(() => {
+        localStorage.setItem('recitationFontSize', fontSize.toString());
+        localStorage.setItem('recitationFontFamily', fontFamily);
+    }, [fontSize, fontFamily]);
 
     // Live tracking effect
     useEffect(() => {
@@ -450,7 +472,10 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                      <div className="text-center text-sm text-gray-500 dark:text-gray-400">
                          {getStatusMessage()}
                     </div>
-                    <button onClick={onGoHome} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"><HomeIcon/></button>
+                    <div className="flex items-center space-x-2">
+                        <button onClick={() => setSettingsOpen(true)} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"><SettingsIcon/></button>
+                        <button onClick={onGoHome} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"><HomeIcon/></button>
+                    </div>
                 </header>
 
                 <main className="flex-1 overflow-y-auto">
@@ -461,7 +486,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                                <span>Cüz {pageData[0]?.juz}</span>
                                <span>{pageData[0]?.surah.name}</span>
                            </div>
-                           <div dir="rtl" className="text-center font-amiri" style={{ fontSize: '24px', lineHeight: 2.5 }}>
+                           <div dir="rtl" className="text-center" style={{ fontFamily: fontFamily, fontSize: `${fontSize}px`, lineHeight: 2.5 }}>
                                 {pageData.map(ayah => (
                                     <div key={ayah.number} className="inline-block">
                                         {ayah.arabicText.split(' ').filter(Boolean).map((word) => {
@@ -513,6 +538,33 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
              </div>
             
             {correctionPopup && <CorrectionPopup data={correctionPopup} onClose={() => setCorrectionPopup(null)} />}
+            
+            {/* Settings Modal */}
+            {isSettingsOpen && (
+                 <div className="fixed inset-0 bg-black/60 z-30 flex items-center justify-center" onClick={() => setSettingsOpen(false)}>
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center mb-6">
+                             <h3 className="text-xl font-bold">Ayarlar</h3>
+                             <button onClick={() => setSettingsOpen(false)} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"><CloseIcon/></button>
+                        </div>
+                        <div className="space-y-6">
+                             <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Yazı Tipi (Arapça)</label>
+                                <select value={fontFamily} onChange={e => setFontFamily(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-teal-500 focus:border-teal-500">
+                                    {FONT_LIST.map(font => <option key={font.name} value={font.value} style={{ fontFamily: font.value }}>{font.name}</option>)}
+                                </select>
+                            </div>
+                             <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Yazı Tipi Boyutu</label>
+                                <div className="flex items-center space-x-4">
+                                     <input type="range" min="16" max="48" step="2" value={fontSize} onChange={e => setFontSize(parseInt(e.target.value))} className="w-full"/>
+                                     <span className="font-bold">{fontSize}px</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
