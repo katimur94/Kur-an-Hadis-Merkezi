@@ -12,12 +12,24 @@ const ChevronLeftIcon: React.FC<{ className?: string }> = ({ className }) => (<s
 const ChevronRightIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>);
 const MenuIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>);
 const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>);
-const SettingsIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.438.995s.145.755.438.995l1.003.827c.424.35.534.954.26 1.431l-1.296 2.247a1.125 1.125 0 0 1-1.37.49l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.645-.87a6.52 6.52 0 0 1-.22-.127c-.324-.196-.72-.257-1.075-.124l-1.217.456a1.125 1.125 0 0 1-1.37-.49l-1.296-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.437-.995s-.145-.755-.437-.995l-1.004-.827a1.125 1.125 0 0 1-.26-1.431l1.296-2.247a1.125 1.125 0 0 1 1.37-.49l1.217.456c.355.133.75.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.213-1.28Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>);
+const SettingsIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.438.995s.145.755.438.995l1.003.827c.424.35.534.954.26 1.431l-1.296-2.247a1.125 1.125 0 0 1-1.37.49l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.063-.374-.313-.686-.645-.87a6.52 6.52 0 0 1-.22-.127c-.324-.196-.72-.257-1.075-.124l-1.217.456a1.125 1.125 0 0 1-1.37-.49l-1.296-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.437-.995s-.145-.755-.437-.995l-1.004-.827a1.125 1.125 0 0 1-.26-1.431l1.296-2.247a1.125 1.125 0 0 1 1.37-.49l1.217.456c.355.133.75.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.213-1.28Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>);
 
 const juzStartPages = [1, 22, 42, 62, 82, 102, 121, 142, 162, 182, 202, 222, 242, 262, 282, 302, 322, 342, 362, 382, 402, 422, 442, 462, 482, 502, 522, 542, 562, 582];
 const TOTAL_PAGES = 604;
 const ARABIC_NUMERALS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
 const toArabicNumeral = (n: number) => n.toString().split('').map(digit => ARABIC_NUMERALS[parseInt(digit)]).join('');
+const FONT_LIST = [
+    { name: 'Mushaf (Amiri Quran)', value: "'Amiri Quran', serif" },
+    { name: 'KFGQPC Hafs (Amiri)', value: "'Amiri', serif" },
+    { name: 'Scheherazade', value: "'Scheherazade New', serif" },
+    { name: 'Me Quran (Noto Naskh)', value: "'Noto Naskh Arabic', serif" },
+    { name: 'PDMS Saleem (Lateef)', value: "'Lateef', cursive" },
+    { name: 'IndoPak (Noto Naskh)', value: "'Noto Naskh Arabic', serif" },
+    { name: 'Muhammadi (Reem Kufi)', value: "'Reem Kufi', sans-serif" },
+    { name: 'Markazi Text', value: "'Markazi Text', serif" },
+    { name: 'Cairo', value: "'Cairo', sans-serif" },
+    { name: 'Tajawal', value: "'Tajawal', sans-serif" },
+];
 
 type PlaybackMode = 'juz' | 'surah' | 'page' | 'none';
 
@@ -32,6 +44,7 @@ const QuranReader: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const [error, setError] = useState<string | null>(null);
     const [reader, setReader] = useState<string>(() => localStorage.getItem('quranReader') || 'ar.alafasy');
     const [fontSize, setFontSize] = useState<number>(() => parseInt(localStorage.getItem('quranFontSize') || '24'));
+    const [fontFamily, setFontFamily] = useState<string>(() => localStorage.getItem('quranFontFamily') || FONT_LIST[0].value);
     
     // Playback State
     const [playlist, setPlaylist] = useState<PlaylistItem[]>([]);
@@ -72,7 +85,8 @@ const QuranReader: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
         localStorage.setItem('quranLastPage', currentPage.toString());
         localStorage.setItem('quranReader', reader);
         localStorage.setItem('quranFontSize', fontSize.toString());
-    }, [viewMode, currentPage, reader, fontSize]);
+        localStorage.setItem('quranFontFamily', fontFamily);
+    }, [viewMode, currentPage, reader, fontSize, fontFamily]);
 
     // Core Playback Logic
     const handleStop = useCallback(() => {
@@ -253,7 +267,7 @@ const QuranReader: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                     <span>Cüz {pageData[0]?.juz}</span>
                     <span>{pageData[0]?.surah.name}</span>
                 </div>
-                <div className="text-center font-amiri" style={{ fontSize: `${fontSize}px`, lineHeight: 2.5 }}>
+                <div className="text-center" style={{ fontFamily: fontFamily, fontSize: `${fontSize}px`, lineHeight: 2.5 }}>
                     {pageData.map(ayah => (
                         <span
                             key={ayah.number}
@@ -276,7 +290,7 @@ const QuranReader: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
         <div className="max-w-4xl mx-auto space-y-4 p-4 md:p-6">
             {pageData.map((ayah) => (
                 <div key={ayah.number} className="py-4 border-b border-gray-200 dark:border-gray-700 rounded-md p-2">
-                    <p className={`text-right font-amiri text-3xl leading-loose mb-4 cursor-pointer transition-colors duration-300 ${currentlyPlayingAyahNumber === ayah.number ? 'font-bold text-teal-600 dark:text-teal-400' : ''}`} onClick={() => handleAyahClick(ayah)}>
+                    <p style={{fontFamily: fontFamily}} className={`text-right text-3xl leading-loose mb-4 cursor-pointer transition-colors duration-300 ${currentlyPlayingAyahNumber === ayah.number ? 'font-bold text-teal-600 dark:text-teal-400' : ''}`} onClick={() => handleAyahClick(ayah)}>
                         {ayah.arabicText} <span className="text-sm font-sans p-1 border rounded-full">{ayah.numberInSurah}</span>
                     </p>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">{ayah.turkishText}</p>
@@ -371,6 +385,12 @@ const QuranReader: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                                     ) : (
                                         <option disabled>Yükleniyor...</option>
                                     )}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Yazı Tipi (Arapça)</label>
+                                <select value={fontFamily} onChange={e => setFontFamily(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-teal-500 focus:border-teal-500">
+                                    {FONT_LIST.map(font => <option key={font.name} value={font.value} style={{ fontFamily: font.value }}>{font.name}</option>)}
                                 </select>
                             </div>
                              <div>
