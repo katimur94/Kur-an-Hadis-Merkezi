@@ -5,7 +5,7 @@ import QuranRecitationChecker from './components/QuranRecitationChecker';
 
 type View = 'home' | 'quran' | 'hadith' | 'recitation';
 
-const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>);
+const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>);
 
 const App: React.FC = () => {
     const [currentView, setCurrentView] = useState<View>('home');
@@ -51,7 +51,7 @@ const App: React.FC = () => {
                         className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left"
                     >
                         <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Yapay Zeka ile Hadis Ara</h2>
-                        <p className="text-gray-600 dark:text-gray-300">İlgilendiğiniz konulardaki hadisleri yapay zeka yardımıyla kolayca bulun.</p>
+                        <p className="text-gray-600 dark:text-gray-300">İlgilendiğiniz konulardaki hadisleri yapay zeka yardımıyla bulun ve fıkhi analizlerini inceleyin.</p>
                     </button>
                     <button
                         onClick={() => navigateTo('recitation')}
@@ -71,7 +71,7 @@ const App: React.FC = () => {
                 </div>
             </main>
             <footer className="mt-12 text-center text-gray-500 dark:text-gray-400 text-sm">
-                <p>&copy; 2025 - Timur Kalaycı. Hayır dualarınızı beklerim. Rabbim bu Site vesilesiyle ilminizi artırsın.</p>
+               <p>&copy; 2025 - Timur Kalaycı. Hayır dualarınızı beklerim. Rabbim bu Site vesilesiyle ilminizi artırsın.</p>
             </footer>
 
             {isInfoModalOpen && (
@@ -125,12 +125,17 @@ const App: React.FC = () => {
                                 </ul>
                             </section>
                             <section>
-                                <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Yapay Zeka ile Hadis Ara</h3>
-                                <p className="text-gray-600 dark:text-gray-300 mb-4">Bu bölümde, Gemini yapay zeka modelini kullanarak sahih hadis kaynaklarında arama yapabilirsiniz.</p>
+                                <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Yapay Zeka ile Hadis Araştırma Aracı</h3>
+                                <p className="text-gray-600 dark:text-gray-300 mb-4">Bu bölüm, Gemini yapay zeka modelini kullanan gelişmiş bir hadis araştırma ve fıkhi analiz aracıdır. Sadece bir arama motoru değil, aynı zamanda derinlemesine bir inceleme platformudur.</p>
                                 <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-                                    <li><strong>Doğal Dilde Arama:</strong> Arama kutusuna "Namazın önemi" veya "Orucun faziletleri nelerdir?" gibi normal bir cümle yazarak arama yapabilirsiniz.</li>
-                                    <li><strong>Güvenilir Kaynaklar:</strong> Yapay zeka, sadece Sahih-i Buhari, Müslim gibi güvenilir kaynaklardan hadisleri bulur ve her hadisin altında kaynağını (kitap, bölüm, hadis no) detaylı olarak belirtir.</li>
-                                    <li><strong>Kontrollü Sonuçlar:</strong> Yapay zeka, bir konuyla ilgili bulduğu hadisleri size grup grup sunar. Daha fazla sonuç görmek isterseniz "Daha Fazla Göster" butonunu kullanabilirsiniz.</li>
+                                    <li><strong>Doğal Dilde Arama:</strong> "Namazın önemi" gibi normal bir cümle yazarak arama yapabilirsiniz.</li>
+                                    <li><strong>Zenginleştirilmiş Hadis Kartları:</strong> Her hadis; orijinal Arapça metni, kimin rivayet ettiği, Türkçe tercümesi ve kaynağı ile birlikte sunulur.</li>
+                                    <li><strong>İnteraktif Kaynak Detayları:</strong> Her hadisin altındaki "Kaynak" butonuna tıklayarak o hadisin ait olduğu koleksiyon, bölüm, hadis/cilt/sayfa numarası gibi tüm künye bilgilerini içeren bir pencere açabilirsiniz.</li>
+                                    <li><strong>Tek Tıkla Kopyalama:</strong> "Kopyala" ikonu ile hadisin tüm bilgilerini (Arapça, Türkçe, rivayet eden, tam kaynak) düzenli bir formatta panoya kopyalayabilirsiniz.</li>
+                                    <li><strong>Derinlemesine Fıkhi Analiz:</strong> Herhangi bir hadis kartının üzerine tıklayarak o hadis özelinde yeni bir yapay zeka analizi başlatabilirsiniz.</li>
+                                    <li><strong>Birebir İmam Nakilleri:</strong> Açılan pencerede, Dört Büyük Mezhep İmamı'nın (Hanefi, Şafii, Maliki, Hanbeli) bu hadisten ne gibi hükümler çıkardığı veya nasıl yorumladığı, doğrudan kendi temel fıkıh eserlerinden <strong>birebir alıntılarla</strong> gösterilir.</li>
+                                    <li><strong>Çift Dilli Alıntılar:</strong> İmamların görüşleri hem orijinal Arapça metinleri hem de Türkçe tercümeleri ile birlikte sunularak hem aslına sadık kalınır hem de anlaşılırlık sağlanır.</li>
+                                    <li><strong>Fıkıh Kaynaklarına Erişim:</strong> Her imamın alıntısının altında, o bilginin alındığı eserin (örn: el-Mebsut) adını taşıyan bir kaynak butonu bulunur. Bu butona tıklayarak eserin yazarı, cilt ve sayfa numarası gibi detayları görebilirsiniz.</li>
                                 </ul>
                             </section>
                             <section>
