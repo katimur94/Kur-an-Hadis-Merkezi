@@ -1,6 +1,6 @@
 {
-  "name": "Kur'an & Hadis Merkezi",
-  "description": "Kur'an-ı Kerim okumak, dinlemek ve Sahih kaynaklardan hadisleri incelemek için kişisel bir web sitesi. Yer imi özelliği ve karanlık mod ile.",
+  "name": "Dijital Medrese",
+  "description": "Yapay zeka destekli kişisel ilim rehberiniz. Kur'an okuyun, hadis araştırın, kıraatinizi geliştirin ve fıkıh öğrenin.",
   "requestFramePermissions": [
     "microphone"
   ]
