@@ -79,3 +79,31 @@ export interface WordAnalysisResult {
 // The entire analysis for a page, which is an array of individual word errors.
 // This is what's stored in localStorage.
 export type PageAnalysis = WordAnalysisResult[];
+
+
+// AI Fiqh Chat Types
+export interface MadhabPosition {
+  madhab: 'Hanefi' | 'Şafii' | 'Maliki' | 'Hanbeli';
+  position: string;
+  source: FiqhSourceInfo;
+}
+
+export interface RelevantHadith {
+  arabicText: string;
+  turkishText: string;
+  source: string; // e.g., "Sahih-i Buhari, Oruç, 2"
+  authenticity: 'Sahih' | 'Hasan' | 'Zayıf' | 'Mevzu';
+}
+
+export interface RelevantQuranVerse {
+  arabicText: string;
+  turkishText: string;
+  reference: string; // e.g., "Bakara, 183"
+}
+
+export interface FiqhResponse {
+  summary: string;
+  madhahibPositions: MadhabPosition[];
+  relevantHadiths: RelevantHadith[];
+  relevantQuranVerses: RelevantQuranVerse[];
+}
