@@ -156,8 +156,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
     // Refs
     const recognitionRef = useRef<SpeechRecognition | null>(null);
     const wordRefs = useRef<Record<number, HTMLSpanElement | null>>({});
-    const ai = useRef(new GoogleGenAI({ apiKey: mport.meta.env.VITE_GEMINI_API_KEY as string }));
-
+    const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
 
     // --- Effects ---
     const handleReset = useCallback(() => {
