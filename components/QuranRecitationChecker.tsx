@@ -156,7 +156,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
     // Refs
     const recognitionRef = useRef<SpeechRecognition | null>(null);
     const wordRefs = useRef<Record<number, HTMLSpanElement | null>>({});
-    const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
+    const ai = useRef(new GoogleGenAI({ apiKey: process.env.API_KEY as string }));
 
     // --- Effects ---
     const handleReset = useCallback(() => {
@@ -299,9 +299,11 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                 setLiveWordStatuses(prevLive => {
                     const newCorrectWords: WordStatusCollection = { ...sessionWordStatuses };
                     let madeChanges = false;
-                    for (const index in prevLive) {
-                        if (prevLive[index].status === 'correct') {
-                            newCorrectWords[Number(index)] = 'correct';
+                    // FIX: Use Object.entries for a type-safe loop instead of for...in.
+                    for (const [indexStr, value] of Object.entries(prevLive)) {
+                        // FIX: Explicitly cast value to LiveWordStatus to prevent potential type errors where 'status' is accessed on an 'unknown' type.
+                        if ((value as LiveWordStatus).status === 'correct') {
+                            newCorrectWords[Number(indexStr)] = 'correct';
                             madeChanges = true;
                         }
                     }
@@ -421,7 +423,8 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
     // --- Render ---
     let wordCounter = -1;
     const analyzedErrorIndices = new Set(analysisResults.map(r => r.wordIndex));
-    const combinedWordStatuses = { ...sessionWordStatuses, ...Object.fromEntries(Object.entries(liveWordStatuses).filter(([,v]) => v.status === 'correct').map(([k]) => [k, 'correct'])) };
+    // FIX: Explicitly cast v to LiveWordStatus to prevent potential type errors where 'status' is accessed on an 'unknown' type.
+    const combinedWordStatuses = { ...sessionWordStatuses, ...Object.fromEntries(Object.entries(liveWordStatuses).filter(([,v]) => (v as LiveWordStatus).status === 'correct').map(([k]) => [k, 'correct'])) };
 
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
