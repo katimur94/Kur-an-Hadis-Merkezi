@@ -181,7 +181,7 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const lastQueryRef = useRef<string>('');
-    const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
+    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
     const model = 'gemini-2.5-flash';
 
     useEffect(() => {
