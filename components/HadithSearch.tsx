@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import type { AIHadithResponse, HadithResult, SourceInfo, ImamCommentary, FiqhSourceInfo } from '../types';
@@ -180,7 +181,7 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const lastQueryRef = useRef<string>('');
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
     const model = 'gemini-2.5-flash';
 
     useEffect(() => {
@@ -363,7 +364,7 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                         ) : (
                             <div className="max-w-lg lg:max-w-2xl w-full px-4 py-3 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-md space-y-4">
                                 <div className="space-y-4">
-                                    {msg.content.hadiths.map((hadith, hIndex) => {
+                                    {msg.content.hadiths?.map((hadith, hIndex) => {
                                         const hadithIdentifier = hadith.arabicText.slice(0, 30);
                                         return (
                                         <button 
