@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import QuranReader from './components/QuranReader';
 import HadithSearch from './components/HadithSearch';
 import QuranRecitationChecker from './components/QuranRecitationChecker';
+import FiqhChat from './components/FiqhChat';
 
-type View = 'home' | 'quran' | 'hadith' | 'recitation';
+type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh';
 
 const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>);
 
@@ -30,15 +31,19 @@ const App: React.FC = () => {
     if (currentView === 'recitation') {
         return <QuranRecitationChecker onGoHome={goHome} />;
     }
+    
+    if (currentView === 'fiqh') {
+        return <FiqhChat onGoHome={goHome} />;
+    }
 
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center p-4 text-gray-800 dark:text-gray-200">
             <header className="text-center mb-12">
-                <h1 className="text-5xl font-bold mb-2">Kur'an & Hadis Merkezi</h1>
-                <p className="text-xl text-gray-500 dark:text-gray-400">Kişisel Kur'an Okuyucu ve Hadis Arama Motorunuz</p>
+                <h1 className="text-5xl font-bold mb-2">Dijital Medrese</h1>
+                <p className="text-xl text-gray-500 dark:text-gray-400">Yapay Zeka Destekli Kişisel İlim Rehberiniz</p>
             </header>
             <main className="w-full max-w-6xl flex flex-col items-center">
-                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
                     <button
                         onClick={() => navigateTo('quran')}
                         className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left"
@@ -59,6 +64,13 @@ const App: React.FC = () => {
                     >
                         <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Kuran Okuma ve Hata Tespiti</h2>
                         <p className="text-gray-600 dark:text-gray-300">Ayetleri okuyun ve yapay zeka ile telaffuz hatalarınızı tespit edin.</p>
+                    </button>
+                    <button
+                        onClick={() => navigateTo('fiqh')}
+                        className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left"
+                    >
+                        <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Fıkıh Soru & Cevap</h2>
+                        <p className="text-gray-600 dark:text-gray-300">Fıkhi sorularınıza dört mezhebe göre kaynaklarıyla birlikte, yapay zeka destekli cevaplar alın.</p>
                     </button>
                 </div>
                 <div className="mt-8">
@@ -136,6 +148,17 @@ const App: React.FC = () => {
                                     <li><strong>Birebir İmam Nakilleri:</strong> Açılan pencerede, Dört Büyük Mezhep İmamı'nın (Hanefi, Şafii, Maliki, Hanbeli) bu hadisten ne gibi hükümler çıkardığı veya nasıl yorumladığı, doğrudan kendi temel fıkıh eserlerinden <strong>birebir alıntılarla</strong> gösterilir.</li>
                                     <li><strong>Çift Dilli Alıntılar:</strong> İmamların görüşleri hem orijinal Arapça metinleri hem de Türkçe tercümeleri ile birlikte sunularak hem aslına sadık kalınır hem de anlaşılırlık sağlanır.</li>
                                     <li><strong>Fıkıh Kaynaklarına Erişim:</strong> Her imamın alıntısının altında, o bilginin alındığı eserin (örn: el-Mebsut) adını taşıyan bir kaynak butonu bulunur. Bu butona tıklayarak eserin yazarı, cilt ve sayfa numarası gibi detayları görebilirsiniz.</li>
+                                </ul>
+                            </section>
+                             <section>
+                                <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Fıkıh Soru & Cevap</h3>
+                                <p className="text-gray-600 dark:text-gray-300 mb-4">Bu modül, günlük hayatta karşılaştığınız fıkhi sorulara (örn: "Oruç nasıl tutulur?", "Adetliyken Kur'an okunur mu?") yapay zeka destekli, kaynakçalı yanıtlar sunar. Her yanıtta şunları bulacaksınız:</p>
+                                <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
+                                    <li><strong>Net Özet:</strong> Sorunuzun cevabını anlaşılır bir dille özetler.</li>
+                                    <li><strong>Dört Mezhebin Görüşü:</strong> Hanefi, Şafii, Maliki ve Hanbeli mezheplerinin konuya dair görüşlerini, varsa aralarındaki farkları belirterek sunar.</li>
+                                    <li><strong>Delil Niteliğinde Hadisler:</strong> Konuyla ilgili hadislerin Arapça metni, güvenilir tercümesi, kaynağı (örn: Sahih-i Müslim, 1151) ve sıhhat derecesi (sahih, hasan vb.) ile birlikte verilir.</li>
+                                    <li><strong>İlgili Kur'an Ayetleri:</strong> Varsa, konuyla ilgili ayetler referanslarıyla birlikte sunulur.</li>
+                                    <li><strong>Önemli Uyarı:</strong> Her cevabın altında, bunun bir yapay zeka özeti olduğu ve nihai kararlar için sunulan kaynakların bizzat araştırılması gerektiği belirtilir.</li>
                                 </ul>
                             </section>
                             <section>
