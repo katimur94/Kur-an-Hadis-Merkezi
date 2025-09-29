@@ -3,8 +3,9 @@ import QuranReader from './components/QuranReader';
 import HadithSearch from './components/HadithSearch';
 import QuranRecitationChecker from './components/QuranRecitationChecker';
 import FiqhChat from './components/FiqhChat';
+import RisaleSearch from './components/RisaleSearch';
 
-type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh';
+type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh' | 'risale';
 
 const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>);
 
@@ -35,6 +36,10 @@ const App: React.FC = () => {
     if (currentView === 'fiqh') {
         return <FiqhChat onGoHome={goHome} />;
     }
+    
+    if (currentView === 'risale') {
+        return <RisaleSearch onGoHome={goHome} />;
+    }
 
     return (
         <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center p-4 text-gray-800 dark:text-gray-200">
@@ -43,7 +48,7 @@ const App: React.FC = () => {
                 <p className="text-xl text-gray-500 dark:text-gray-400">Yapay Zeka Destekli Kişisel İlim Rehberiniz</p>
             </header>
             <main className="w-full max-w-6xl flex flex-col items-center">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
                     <button
                         onClick={() => navigateTo('quran')}
                         className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left"
@@ -71,6 +76,13 @@ const App: React.FC = () => {
                     >
                         <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Fıkıh Soru & Cevap</h2>
                         <p className="text-gray-600 dark:text-gray-300">Fıkhi sorularınıza dört mezhebe göre kaynaklarıyla birlikte, yapay zeka destekli cevaplar alın.</p>
+                    </button>
+                     <button
+                        onClick={() => navigateTo('risale')}
+                        className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left"
+                    >
+                        <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Risale-i Nur'da Ara</h2>
+                        <p className="text-gray-600 dark:text-gray-300">Sorularınıza Risale-i Nur külliyatından yapay zeka destekli, kaynaklı cevaplar bulun.</p>
                     </button>
                 </div>
                 <div className="mt-8">
@@ -159,6 +171,15 @@ const App: React.FC = () => {
                                     <li><strong>Delil Niteliğinde Hadisler:</strong> Konuyla ilgili hadislerin Arapça metni, güvenilir tercümesi, kaynağı (örn: Sahih-i Müslim, 1151) ve sıhhat derecesi (sahih, hasan vb.) ile birlikte verilir.</li>
                                     <li><strong>İlgili Kur'an Ayetleri:</strong> Varsa, konuyla ilgili ayetler referanslarıyla birlikte sunulur.</li>
                                     <li><strong>Önemli Uyarı:</strong> Her cevabın altında, bunun bir yapay zeka özeti olduğu ve nihai kararlar için sunulan kaynakların bizzat araştırılması gerektiği belirtilir.</li>
+                                </ul>
+                            </section>
+                            <section>
+                                <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Risale-i Nur'da Arama</h3>
+                                <p className="text-gray-600 dark:text-gray-300 mb-4">Bu modül, Bediüzzaman Said Nursi'nin Risale-i Nur külliyatı üzerine sorularınıza yapay zeka destekli, kaynakçalı yanıtlar sunar. Her yanıtta şunları bulacaksınız:</p>
+                                <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
+                                    <li><strong>Özet Cevap:</strong> Sorunuzun cevabını Risale-i Nur temelinde anlaşılır bir dille özetler.</li>
+                                    <li><strong>Orijinal Metin:</strong> Cevabın dayandığı Risale-i Nur'dan orijinal alıntıyı sunar.</li>
+                                    <li><strong>Kaynak Bilgisi:</strong> Alıntının yapıldığı eserin adını, bölümünü ve sayfa numarasını net bir şekilde belirtir.</li>
                                 </ul>
                             </section>
                             <section>
