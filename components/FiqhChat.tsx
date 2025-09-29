@@ -73,7 +73,7 @@ const FiqhChat: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const responseCardRefs = useRef<(HTMLDivElement | null)[]>([]);
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
     const model = 'gemini-2.5-flash';
 
     useEffect(() => {
@@ -270,7 +270,8 @@ Cevabın her zaman bu yapılandırılmış formatta ve JSON olarak dönmelidir. 
                             </div>
                         ) : (
                             <div
-                                ref={el => responseCardRefs.current[index] = el} 
+                                // FIX: Use a block statement for the ref callback to avoid returning a value, which is not allowed by React's Ref type.
+                                ref={el => { responseCardRefs.current[index] = el; }} 
                                 className="max-w-2xl lg:max-w-4xl w-full px-5 py-4 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-md space-y-6 relative"
                             >
                                 <div className="absolute top-3 right-3 flex space-x-1 exclude-from-download">
