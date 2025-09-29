@@ -1,0 +1,548 @@
+import React, { useState, useRef, useEffect } from 'react';
+import { GoogleGenAI, Type } from "@google/genai";
+import * as htmlToImage from 'html-to-image';
+import type { RisaleResponse, RisaleSourceInfo, RisaleExcerpt, RisalePoint } from '../types';
+import Spinner from './Spinner';
+
+// --- ICONS ---
+const HomeIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>);
+const SendIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className || "w-5 h-5"}><path d="M3.105 2.289a.75.75 0 0 0-.826.95l1.414 4.949a.75.75 0 0 0 .596.596l4.95 1.414a.75.75 0 0 0 .949-.826L10.11 3.105a.75.75 0 0 0-.826-.95L3.105 2.289Z" /><path d="M3.105 2.289a.75.75 0 0 0-.826.95l1.414 4.949a.75.75 0 0 0 .596.596l4.95 1.414a.75.75 0 0 0 .949-.826L10.11 3.105a.75.75 0 0 0-.826-.95L3.105 2.289Z" clipRule="evenodd" /></svg>);
+const InfoIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" /></svg>);
+const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>);
+const CopyIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m9.375 0-9.375 0" /></svg>);
+const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>);
+const DownloadIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>);
+const PresentationIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125V5.625c0-.621.504-1.125 1.125-1.125h17.25c.621 0 1.125.504 1.125 1.125v12.75c0 .621-.504 1.125-1.125 1.125m-17.25 0h17.25m-17.25 0V5.625m17.25 13.875V5.625m0 13.875L13.5 13.5m0 0L9.75 17.25m3.75-3.75L6 19.5m12-13.5" /></svg>);
+const MiniSpinner: React.FC = () => (<div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>);
+
+type Message = {
+    role: 'user';
+    content: string;
+} | {
+    role: 'model';
+    content: RisaleResponse;
+};
+
+const RisaleSourceDetailModal: React.FC<{ sourceInfo: RisaleSourceInfo; onClose: () => void }> = ({ sourceInfo, onClose }) => {
+    return (
+        <div 
+            className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 animate-fade-in"
+            onClick={onClose}
+        >
+            <div 
+                className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 animate-scale-in"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-xl font-bold">Kaynak Detayları</h3>
+                    <button onClick={onClose} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                        <CloseIcon />
+                    </button>
+                </div>
+                <ul className="space-y-3 text-gray-700 dark:text-gray-300">
+                    <li className="flex justify-between border-b pb-2 dark:border-gray-700">
+                        <span className="font-semibold">Eser:</span>
+                        <span className="text-right">{sourceInfo.book}</span>
+                    </li>
+                     <li className="flex justify-between border-b pb-2 dark:border-gray-700">
+                        <span className="font-semibold">Bölüm:</span>
+                        <span className="text-right">{sourceInfo.section}</span>
+                    </li>
+                    {sourceInfo.pageNumber && (
+                        <li className="flex justify-between">
+                            <span className="font-semibold">Sayfa No:</span>
+                            <span>{sourceInfo.pageNumber}</span>
+                        </li>
+                    )}
+                </ul>
+            </div>
+        </div>
+    );
+};
+
+const TaggedTextRenderer: React.FC<{ text: string }> = ({ text }) => {
+    const parts = text.split(/(<ayah>.*?<\/ayah>|<hadis>.*?<\/hadis>)/g).filter(Boolean);
+
+    return (
+        <p className="text-gray-700 dark:text-gray-300 leading-loose">
+            {parts.map((part, index) => {
+                if (part.startsWith('<ayah>')) {
+                    return (
+                        <span key={index} className="block my-3 p-4 bg-green-50 dark:bg-gray-700/50 border-r-4 border-green-600 dark:border-green-400 rounded-r-lg shadow-inner font-amiri text-xl text-green-900 dark:text-green-200">
+                            {part.replace(/<\/?ayah>/g, '')}
+                        </span>
+                    );
+                }
+                if (part.startsWith('<hadis>')) {
+                    return (
+                        <span key={index} className="block my-3 p-4 bg-sky-50 dark:bg-gray-700/50 border-r-4 border-sky-600 dark:border-sky-400 rounded-r-lg shadow-inner font-amiri text-xl text-sky-900 dark:text-sky-200">
+                            {part.replace(/<\/?hadis>/g, '')}
+                        </span>
+                    );
+                }
+                return <span key={index}>{part}</span>;
+            })}
+        </p>
+    );
+};
+
+const PresentationCard: React.FC<{ question: string; response: RisaleResponse }> = ({ question, response }) => {
+    return (
+        <div className="p-16 font-sans bg-gradient-to-br from-[#0a192f] via-[#112240] to-[#0a192f] text-gray-200">
+            <div className="text-center mb-12">
+                <p className="text-xl text-gray-400">Soru:</p>
+                <h1 className="text-5xl font-bold mt-2 text-white">"{question}"</h1>
+            </div>
+
+            <div className="mb-10">
+                <h2 className="text-2xl font-semibold text-amber-300 mb-3 border-b border-amber-400/30 pb-2">
+                    Genel Özet
+                </h2>
+                <p className="text-lg text-gray-300 leading-relaxed">{response.overallSummary}</p>
+            </div>
+
+            {response.relatedPoints && response.relatedPoints.length > 0 && (
+                 <div className="mb-10">
+                    <h2 className="text-2xl font-semibold text-amber-300 mb-4 border-b border-amber-400/30 pb-2">
+                        {response.relatedPointsTitle}
+                    </h2>
+                     <div className="space-y-8">
+                        {response.relatedPoints.map((point, i) => (
+                             <div key={i} className="flex items-start">
+                                <span className="text-2xl font-bold text-amber-300 mr-5 mt-1">{i + 1}.</span>
+                                <div className="flex-1">
+                                    <h3 className="text-xl font-semibold text-sky-300 mb-2">
+                                        {point.pointTitle}
+                                    </h3>
+                                    <div className="border-l-4 border-sky-400 pl-6">
+                                        <blockquote className="italic">
+                                             <div className="dark"> 
+                                                <TaggedTextRenderer text={point.originalText} />
+                                             </div>
+                                        </blockquote>
+                                         <p className="text-right text-sm text-gray-400 mt-2">Kaynak: {point.source.book} - {point.source.section}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {response.excerpts?.length > 0 && (
+                <div>
+                    <h2 className="text-2xl font-semibold text-amber-300 mb-4 border-b border-amber-400/30 pb-2">
+                        İlgili Bölümlerden Alıntılar
+                    </h2>
+                    {response.excerpts.map((excerpt, i) => (
+                        <div key={i} className="mb-8">
+                            <h3 className="text-xl font-semibold text-sky-300 mb-4">
+                                {excerpt.source.book} - {excerpt.source.section}
+                            </h3>
+                            <div className="border-l-4 border-sky-400 pl-6">
+                                <blockquote className="italic">
+                                     <div className="dark"> 
+                                        <TaggedTextRenderer text={excerpt.originalText} />
+                                     </div>
+                                </blockquote>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+            
+            <footer className="text-center mt-16 text-sm text-gray-500">
+                Dijital Medrese
+            </footer>
+        </div>
+    );
+};
+
+
+const RisaleSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [userInput, setUserInput] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [sourceModalData, setSourceModalData] = useState<RisaleSourceInfo | null>(null);
+    const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+    const [generatingIndex, setGeneratingIndex] = useState<number | null>(null);
+    const [presentationData, setPresentationData] = useState<{ question: string; response: RisaleResponse; index: number } | null>(null);
+
+    const chatContainerRef = useRef<HTMLDivElement>(null);
+    const responseCardRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const presentationRef = useRef<HTMLDivElement>(null);
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    const model = 'gemini-2.5-flash';
+
+    useEffect(() => {
+        if (chatContainerRef.current) {
+            chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+    }, [messages]);
+
+     useEffect(() => {
+        if (presentationData && presentationRef.current) {
+            const node = presentationRef.current;
+            
+            htmlToImage.toPng(node, { pixelRatio: 2 })
+            .then((dataUrl) => {
+                const link = document.createElement('a');
+                link.download = 'risale-sunum-karti.png';
+                link.href = dataUrl;
+                link.click();
+            })
+            .catch((error) => {
+                console.error('Failed to generate presentation image', error);
+                setError('Sunum kartı oluşturulurken bir hata oluştu.');
+            })
+            .finally(() => {
+                setPresentationData(null);
+                setGeneratingIndex(null);
+            });
+        }
+    }, [presentationData]);
+    
+    const handleCopy = (response: RisaleResponse, index: number) => {
+        const userMessage = messages[index - 1];
+        const question = (userMessage && userMessage.role === 'user') ? userMessage.content : '';
+        let textToCopy = `Soru: ${question}\n\n`;
+        textToCopy += `Genel Özet:\n${response.overallSummary}\n\n`;
+
+        if (response.relatedPoints && response.relatedPoints.length > 0) {
+            textToCopy += `${response.relatedPointsTitle}:\n\n`;
+            response.relatedPoints.forEach((point, i) => {
+                 const sourceParts = [point.source.book, point.source.section, point.source.pageNumber ? `Sayfa ${point.source.pageNumber}` : null].filter(Boolean);
+                const plainText = point.originalText.replace(/<\/?(ayah|hadis)>/g, '');
+                textToCopy += `${i + 1}. ${point.pointTitle}\n`;
+                textToCopy += `"${plainText}"\n`;
+                textToCopy += `(Kaynak: ${sourceParts.join(', ')})\n\n`;
+            });
+        }
+
+        if (response.excerpts && response.excerpts.length > 0) {
+            textToCopy += `İlgili Bölümlerden Alıntılar:\n\n`;
+            response.excerpts.forEach((excerpt) => {
+                const sourceParts = [excerpt.source.book, excerpt.source.section, excerpt.source.pageNumber ? `Sayfa ${excerpt.source.pageNumber}` : null].filter(Boolean);
+                const plainText = excerpt.originalText.replace(/<\/?(ayah|hadis)>/g, '');
+                textToCopy += `"${plainText}"\n`;
+                textToCopy += `(Kaynak: ${sourceParts.join(', ')})\n\n`;
+            });
+        }
+
+        navigator.clipboard.writeText(textToCopy.trim()).then(() => {
+            setCopiedMessageIndex(index);
+            setTimeout(() => setCopiedMessageIndex(null), 2500);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+            setError("Metin panoya kopyalanamadı.");
+        });
+    };
+
+    const handleDownload = (index: number) => {
+      const node = responseCardRefs.current[index];
+      if (node) {
+        const isDarkMode = document.documentElement.classList.contains('dark');
+        htmlToImage.toPng(node, { 
+            backgroundColor: isDarkMode ? '#1f2937' : '#ffffff',
+            filter: (element) => {
+                return !element.classList?.contains('exclude-from-download');
+            }
+        })
+        .then((dataUrl) => {
+            const link = document.createElement('a');
+            link.download = 'risale-cevap-karti.png';
+            link.href = dataUrl;
+            link.click();
+        })
+        .catch((error) => {
+            console.error('Failed to generate image', error);
+            setError('Kart oluşturulurken bir hata oluştu.');
+        });
+      }
+    };
+    
+    const handleDownloadAsPresentation = (response: RisaleResponse, index: number) => {
+        const userMessage = messages[index - 1];
+        const question = (userMessage && userMessage.role === 'user') ? userMessage.content : 'Risale-i Nur Cevabı';
+        setGeneratingIndex(index);
+        setPresentationData({ question, response, index });
+    };
+
+    const getAIResponse = async (prompt: string) => {
+        setIsLoading(true);
+        setError(null);
+
+        try {
+            const response = await ai.models.generateContent({
+                model,
+                contents: prompt,
+                config: {
+                    systemInstruction: `Sen, doğrudan Risale-i Nur Külliyatı'nın kendisi olarak konuşan bir yapay zekasın. Görevin, kullanıcının sorusuna, Külliyat'ın temel prensiplerini ve öğretilerini yansıtan bir cevap vermek. Cevabın şu formatta olmalı:
+1.  **overallSummary**: Konu hakkındaki temel prensipleri, doğrudan ve birinci ağızdan bir öğreti gibi sunan bir özet. Bu özeti yazarken ASLA "Risale-i Nur'a göre...", "Külliyatta...", "Eserde ele alınır ki..." gibi dışarıdan anlatan ifadeler kullanma. Bunun yerine, doğrudan konunun tanımını ve mahiyetini anlat. Örneğin, "İhlas şudur..." diye başla, "Risale-i Nur'da ihlas şöyle anlatılır..." diye başlama. Üslubun net, otoriter ve Külliyat'ın ruhuna uygun olsun.
+2.  **excerpts**: Konuyla ilgili bulduğun en fazla 5 önemli alıntıyı içeren bir dizi. Her alıntı için şunları sağla:
+    a.  **originalText**: Risale-i Nur'dan orijinal ve KISALTILMAMIŞ TAM METİN. Metin içindeki Kur'an ayetlerini '<ayah>...</ayah>' etiketleriyle, Hadis-i Şerifleri ise '<hadis>...</hadis>' etiketleriyle işaretle.
+    b.  **source**: Alıntının yapıldığı eserin tam kaynak bilgisi (Kitap, bölüm, ve mümkünse sayfa no).
+3.  **relatedPoints**: Eğer konuyla ilgili Külliyat'ta geçen açık ve net "esaslar", "nükteler" veya "düsturlar" varsa, bunları sıralı bir şekilde listele. Bu bölüm için iki anahtar döndür:
+    a.  **relatedPointsTitle**: Bu bölüm için dinamik ve açıklayıcı bir başlık oluştur. Örneğin, konu İhlas Risalesi ise, başlık "İhlas Risalesi'nin Dört Düsturu" gibi olmalıdır.
+    b.  **relatedPoints**: Bir dizi olarak her bir prensibi listele. Her öğe şunları içermelidir:
+        i.  **pointTitle**: Prensibin sıralı başlığı. Örneğin, "Birinci Düstur", "İkinci Esas".
+        ii. **originalText**: Esasın, nüktenin veya düsturun geçtiği orijinal ve KISALTILMAMIŞ TAM METİN. Ayetleri '<ayah>...</ayah>' ve hadisleri '<hadis>...</hadis>' etiketleriyle işaretle.
+        iii. **source**: Bu metnin tam kaynak bilgisi.
+    Bir konu, özellikle de İhlas Risalesi gibi, belirli sayıda temel esasa veya düstura dayanıyorsa (örneğin 'Dört Düstur'), bu esasların **tamamını eksiksiz olarak** listelediğinden emin ol. Bu konuda kesinlikle hata yapmamalısın. Bilgilerin doğruluğu ve eksiksizliği en yüksek önceliktir. Eğer yoksa, bu alanı boş bir dizi olarak döndür.
+Cevabını mutlaka JSON formatında döndür. Eğer konuyla ilgili bir cevap bulamazsan, 'overallSummary' alanına bunu nazikçe belirt ve diğer alanları boş bir dizi olarak döndür.`,
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            overallSummary: { type: Type.STRING, description: "Konuyu genel hatlarıyla özetleyen giriş paragrafı." },
+                            excerpts: {
+                                type: Type.ARRAY,
+                                description: "Konuyla ilgili Risale-i Nur'dan alıntılar.",
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        originalText: { type: Type.STRING, description: "Orijinal metin. Ayetler <ayah>...</ayah>, hadisler <hadis>...</hadis> ile etiketlenmiş." },
+                                        source: {
+                                            type: Type.OBJECT,
+                                            description: "Alıntının yapıldığı eserin kaynak bilgisi.",
+                                            properties: {
+                                                book: { type: Type.STRING, description: "Eserin adı (örn: Sözler, Mektubat)." },
+                                                section: { type: Type.STRING, description: "Bölüm veya konu adı (örn: Birinci Söz, Yirmi İkinci Mektup)." },
+                                                pageNumber: { type: Type.STRING, description: "Sayfa numarası (varsa)." }
+                                            },
+                                            required: ['book', 'section']
+                                        }
+                                    },
+                                    required: ['originalText', 'source']
+                                }
+                            },
+                             relatedPointsTitle: { 
+                                type: Type.STRING, 
+                                description: "Esaslar, nükteler ve düsturlar bölümü için dinamik bir başlık. Örn: 'İhlas Risalesi'nin Dört Düsturu'." 
+                            },
+                             relatedPoints: {
+                                type: Type.ARRAY,
+                                description: "Konuyla ilgili esaslar, nükteler veya düsturlar.",
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        pointTitle: { type: Type.STRING, description: "Noktanın sıralı başlığı (örn: Birinci Düstur)." },
+                                        originalText: { type: Type.STRING, description: "Esasın, nüktenin veya düsturun geçtiği orijinal metin." },
+                                        source: {
+                                            type: Type.OBJECT,
+                                            description: "Metnin kaynak bilgisi.",
+                                            properties: {
+                                                book: { type: Type.STRING },
+                                                section: { type: Type.STRING },
+                                                pageNumber: { type: Type.STRING }
+                                            },
+                                            required: ['book', 'section']
+                                        }
+                                    },
+                                    required: ['pointTitle', 'originalText', 'source']
+                                }
+                            }
+                        },
+                        required: ['overallSummary', 'excerpts', 'relatedPointsTitle', 'relatedPoints']
+                    }
+                }
+            });
+
+            const jsonString = response.text.trim();
+            const aiResponse: RisaleResponse = JSON.parse(jsonString);
+            const newAiMessage: Message = { role: 'model', content: aiResponse };
+            setMessages(prev => [...prev, newAiMessage]);
+        } catch (err) {
+            console.error("AI Error:", err);
+            setError("Yapay zekadan cevap alınırken bir hata oluştu. Lütfen sorunuzu daha net ifade ederek tekrar deneyin.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!userInput.trim() || isLoading) return;
+
+        const newUserMessage: Message = { role: 'user', content: userInput };
+        setMessages(prev => [...prev, newUserMessage]);
+        await getAIResponse(userInput);
+        setUserInput('');
+    };
+
+    return (
+        <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+             {/* Hidden element for presentation download */}
+             {presentationData && (
+                <div className="absolute -left-[9999px] top-0 w-[1080px]">
+                    <div ref={presentationRef}>
+                        <PresentationCard 
+                            question={presentationData.question} 
+                            response={presentationData.response}
+                        />
+                    </div>
+                </div>
+            )}
+            
+            <header className="flex-shrink-0 bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Risale-i Nur'da Ara</h1>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Sorularınıza külliyattan kaynaklı cevaplar bulun.</p>
+                </div>
+                <button onClick={onGoHome} className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-white dark:bg-gray-700 shadow-sm hover:bg-gray-100 dark:hover:bg-gray-600">
+                    <HomeIcon className="w-5 h-5" />
+                    <span>Anasayfa</span>
+                </button>
+            </header>
+
+            <main ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+                {messages.length === 0 && !isLoading && (
+                    <div className="text-center text-gray-500 dark:text-gray-400 pt-16">
+                        <p className="text-lg">Risale-i Nur'dan bir konu sorun.</p>
+                        <p className="text-sm">Örn: "İhlas hakkında bilgi ver."</p>
+                    </div>
+                )}
+                {messages.map((msg, index) => (
+                    <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        {msg.role === 'user' ? (
+                            <div className="max-w-lg lg:max-w-2xl px-4 py-3 rounded-xl bg-teal-500 text-white shadow-md">
+                                {msg.content}
+                            </div>
+                        ) : (
+                            <div
+                                ref={el => { responseCardRefs.current[index] = el; }}
+                                className="max-w-2xl lg:max-w-4xl w-full px-5 py-4 rounded-xl bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 shadow-md space-y-6 relative"
+                            >
+                                <div className="absolute top-3 right-3 flex space-x-1 exclude-from-download">
+                                    <button
+                                        onClick={() => handleCopy(msg.content, index)}
+                                        title="Cevabı kopyala"
+                                        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                        {copiedMessageIndex === index ? <CheckIcon className="w-5 h-5 text-green-500" /> : <CopyIcon className="w-5 h-5" />}
+                                    </button>
+                                     <button
+                                        onClick={() => handleDownload(index)}
+                                        title="Cevabı kart olarak indir"
+                                        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                        <DownloadIcon className="w-5 h-5" />
+                                    </button>
+                                     <button
+                                        onClick={() => handleDownloadAsPresentation(msg.content, index)}
+                                        title="Cevabı sunum olarak indir"
+                                        className="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                                        disabled={generatingIndex === index}
+                                    >
+                                        {generatingIndex === index ? <MiniSpinner /> : <PresentationIcon className="w-5 h-5" />}
+                                    </button>
+                                </div>
+
+                                {/* Summary */}
+                                <section>
+                                    <h2 className="text-xl font-bold text-teal-600 dark:text-teal-400 mb-2">Genel Özet</h2>
+                                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{msg.content.overallSummary}</p>
+                                </section>
+
+                                 {/* Related Points */}
+                                {msg.content.relatedPoints && msg.content.relatedPoints.length > 0 && (
+                                    <section>
+                                        <h2 className="text-xl font-bold text-teal-600 dark:text-teal-400 mb-4">{msg.content.relatedPointsTitle}</h2>
+                                        <div className="space-y-6">
+                                            {msg.content.relatedPoints.map((point, i) => (
+                                                <div key={i} className="flex items-start">
+                                                    <span className="text-xl font-bold text-teal-500 dark:text-teal-400 mr-4 mt-1">{i + 1}.</span>
+                                                    <div className="flex-1 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border-l-4 border-amber-500">
+                                                        <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">{point.pointTitle}</h3>
+                                                        <blockquote className="italic">
+                                                            <TaggedTextRenderer text={point.originalText} />
+                                                        </blockquote>
+                                                        <div className="text-right mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
+                                                            <button
+                                                                onClick={() => setSourceModalData(point.source)}
+                                                                className="inline-block px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 rounded-full hover:bg-amber-200 dark:hover:bg-amber-900 transition-colors"
+                                                            >
+                                                                Kaynak: {point.source.book} - {point.source.section}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
+
+                                {/* Excerpts */}
+                                {msg.content.excerpts?.length > 0 && (
+                                    <section>
+                                        <h2 className="text-xl font-bold text-teal-600 dark:text-teal-400 mb-3">İlgili Bölümlerden Alıntılar</h2>
+                                        <div className="space-y-4">
+                                            {msg.content.excerpts.map((excerpt, i) => (
+                                                <div key={i} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border-l-4 border-amber-500 flex flex-col justify-between">
+                                                    <blockquote className="italic">
+                                                        <TaggedTextRenderer text={excerpt.originalText} />
+                                                    </blockquote>
+                                                    <div className="text-right mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
+                                                        <button
+                                                            onClick={() => setSourceModalData(excerpt.source)}
+                                                            className="inline-block px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 rounded-full hover:bg-amber-200 dark:hover:bg-amber-900 transition-colors"
+                                                        >
+                                                            Kaynak: {excerpt.source.book} - {excerpt.source.section}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </section>
+                                )}
+                                  {/* Disclaimer */}
+                                <div className="!mt-8 flex items-start space-x-3 p-3 text-sm text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/40 rounded-lg border border-amber-200 dark:border-amber-900/60 exclude-from-download">
+                                    <InfoIcon className="w-5 h-5 flex-shrink-0 mt-0.5"/>
+                                    <p>Bu, yapay zeka tarafından Risale-i Nur Külliyatı'ndan derlenmiş bir özettir. En doğru bilgi için eserlerin aslına müracaat ediniz.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                ))}
+
+                {isLoading && (
+                    <div className="flex justify-start">
+                        <div className="max-w-2xl px-4 py-3 rounded-xl bg-white dark:bg-gray-800 shadow-md">
+                            <Spinner />
+                        </div>
+                    </div>
+                )}
+                {error && <p className="text-center text-red-500">{error}</p>}
+            </main>
+
+            <footer className="flex-shrink-0 p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-700">
+                <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
+                    <input
+                        type="text"
+                        value={userInput}
+                        onChange={(e) => setUserInput(e.target.value)}
+                        placeholder="Bir konu yazın..."
+                        className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                        disabled={isLoading}
+                    />
+                    <button
+                        type="submit"
+                        disabled={isLoading || !userInput.trim()}
+                        className="p-3 bg-teal-600 text-white rounded-lg shadow-md hover:bg-teal-700 disabled:bg-teal-400 disabled:cursor-not-allowed transition-colors"
+                    >
+                        <SendIcon className="w-6 h-6" />
+                    </button>
+                </form>
+            </footer>
+             {sourceModalData && (
+                <RisaleSourceDetailModal
+                    sourceInfo={sourceModalData}
+                    onClose={() => setSourceModalData(null)}
+                />
+            )}
+        </div>
+    );
+};
+
+export default RisaleSearch;
