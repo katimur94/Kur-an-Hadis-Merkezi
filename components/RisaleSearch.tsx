@@ -172,7 +172,7 @@ const RisaleSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const responseCardRefs = useRef<(HTMLDivElement | null)[]>([]);
     const presentationRef = useRef<HTMLDivElement>(null);
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
     const model = 'gemini-2.5-flash';
 
     useEffect(() => {
