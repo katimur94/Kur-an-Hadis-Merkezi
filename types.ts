@@ -1,24 +1,11 @@
-export interface SurahSummary {
-  number: number;
-  name: string;
-  englishName: string;
-  revelationType: string;
-  numberOfAyahs: number;
-}
+// --- Quran Reader & General API Types ---
 
-export interface CombinedAyah {
-    numberInSurah: number;
-    arabicText: string;
-    turkishText: string;
-    audio?: string;
-    number: number; // overall Ayah number
-    juz: number;
-    page: number;
-    surah: {
-      number: number;
-      name: string;
-      englishName: string;
-    };
+export interface SurahSummary {
+    number: number;
+    name: string;
+    englishName: string;
+    revelationType: string;
+    numberOfAyahs: number;
 }
 
 export interface Reciter {
@@ -26,33 +13,45 @@ export interface Reciter {
     name: string;
 }
 
-// AI Hadith Search Types
+export interface SurahInfo {
+  number: number;
+  name: string;
+  englishName: string;
+}
+
+export interface CombinedAyah {
+    numberInSurah: number;
+    arabicText: string;
+    turkishText: string;
+    audio?: string;
+    number: number;
+    juz: number;
+    page: number;
+    surah: SurahInfo;
+}
+
+export interface PlaylistItem {
+    ayahNumber: number;
+    audioUrl: string;
+    pageNumber: number;
+}
+
+
+// --- Hadith Search Types ---
+
 export interface SourceInfo {
-  book: string;
-  chapter: string;
-  hadithNumber: string;
-  volume?: string;
-  pageNumber?: string;
+    book: string;
+    chapter: string;
+    hadithNumber: string;
+    volume?: string;
+    pageNumber?: string;
 }
 
 export interface HadithResult {
-  arabicText: string;
-  turkishText: string;
-  narrator: string;
-  source: SourceInfo;
-}
-
-export interface FiqhSourceInfo {
-  bookTitle: string;
-  author?: string;
-  volume?: string;
-  pageNumber?: string;
-}
-
-export interface ImamCommentary {
-  imamName: string; // e.g., "İmam Ebu Hanife (Hanefi Mezhebi)"
-  commentary: string;
-  source: FiqhSourceInfo;
+    arabicText: string;
+    turkishText: string;
+    narrator: string;
+    source: SourceInfo;
 }
 
 export interface AIHadithResponse {
@@ -60,50 +59,84 @@ export interface AIHadithResponse {
     hasMore: boolean;
 }
 
-export interface PlaylistItem {
-  ayahNumber: number; // The unique, overall number of the ayah
-  audioUrl: string;
-  pageNumber: number;
+export interface FiqhSourceInfo {
+    bookTitle: string;
+    author?: string;
+    volume?: string;
+    pageNumber?: string;
 }
 
-// WordAnalysisResult is the structured feedback for a single word from the AI.
-// This is what gets saved for each identified error.
+export interface ImamCommentary {
+    imamName: string;
+    commentary: string;
+    source: FiqhSourceInfo;
+}
+
+
+// --- Quran Recitation Checker Types ---
+
 export interface WordAnalysisResult {
-  wordIndex: number;
-  word: string;
-  errorType: string; // e.g., "Tecvid Hatası: İdgam"
-  explanation: string; // "Nun harfi bir sonraki harfe katılmalıydı."
-  ruleInfo: string; // "İdgam, tenvin veya sakin nun'dan sonra..."
+    wordIndex: number;
+    word: string;
+    errorType: string;
+    explanation: string;
+    ruleInfo: string;
 }
 
-// The entire analysis for a page, which is an array of individual word errors.
-// This is what's stored in localStorage.
 export type PageAnalysis = WordAnalysisResult[];
 
 
-// AI Fiqh Chat Types
+// --- Fiqh Chat Types ---
+
 export interface MadhabPosition {
-  madhab: 'Hanefi' | 'Şafii' | 'Maliki' | 'Hanbeli';
-  position: string;
-  source: FiqhSourceInfo;
+    madhab: string;
+    position: string;
+    source: FiqhSourceInfo;
 }
 
-export interface RelevantHadith {
-  arabicText: string;
-  turkishText: string;
-  source: string; // e.g., "Sahih-i Buhari, Oruç, 2"
-  authenticity: 'Sahih' | 'Hasan' | 'Zayıf' | 'Mevzu';
+export interface FiqhHadith {
+    arabicText: string;
+    turkishText: string;
+    source: string;
+    authenticity: string;
 }
 
-export interface RelevantQuranVerse {
-  arabicText: string;
-  turkishText: string;
-  reference: string; // e.g., "Bakara, 183"
+export interface FiqhQuranVerse {
+    arabicText: string;
+    turkishText: string;
+    reference: string;
 }
 
 export interface FiqhResponse {
-  summary: string;
-  madhahibPositions: MadhabPosition[];
-  relevantHadiths: RelevantHadith[];
-  relevantQuranVerses: RelevantQuranVerse[];
+    summary: string;
+    madhahibPositions: MadhabPosition[];
+    relevantHadiths: FiqhHadith[];
+    relevantQuranVerses: FiqhQuranVerse[];
+}
+
+
+// --- Risale Search Types ---
+
+export interface RisaleSourceInfo {
+    book: string;
+    section: string;
+    pageNumber?: string;
+}
+
+export interface RisaleExcerpt {
+    originalText: string;
+    source: RisaleSourceInfo;
+}
+
+export interface RisalePoint {
+    pointTitle: string; // e.g., "Birinci Düstur"
+    originalText: string;
+    source: RisaleSourceInfo;
+}
+
+export interface RisaleResponse {
+    overallSummary: string;
+    excerpts: RisaleExcerpt[];
+    relatedPointsTitle: string; // e.g., "İhlas Risalesi'nin Dört Düsturu"
+    relatedPoints: RisalePoint[];
 }
