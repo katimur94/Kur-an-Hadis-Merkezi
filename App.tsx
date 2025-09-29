@@ -175,11 +175,20 @@ const App: React.FC = () => {
                             </section>
                             <section>
                                 <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Risale-i Nur'da Arama</h3>
-                                <p className="text-gray-600 dark:text-gray-300 mb-4">Bu modül, Bediüzzaman Said Nursi'nin Risale-i Nur külliyatı üzerine sorularınıza yapay zeka destekli, kaynakçalı yanıtlar sunar. Her yanıtta şunları bulacaksınız:</p>
+                                <p className="text-gray-600 dark:text-gray-300 mb-4">Bu modül, Risale-i Nur külliyatı üzerine sorularınıza kapsamlı ve metodolojik cevaplar sunar. Yapay zeka, sorduğunuz konuyla ilgili Külliyat'taki farklı bölümleri tarayarak size çok katmanlı bir cevap kartı oluşturur:</p>
                                 <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-                                    <li><strong>Özet Cevap:</strong> Sorunuzun cevabını Risale-i Nur temelinde anlaşılır bir dille özetler.</li>
-                                    <li><strong>Orijinal Metin:</strong> Cevabın dayandığı Risale-i Nur'dan orijinal alıntıyı sunar.</li>
-                                    <li><strong>Kaynak Bilgisi:</strong> Alıntının yapıldığı eserin adını, bölümünü ve sayfa numarasını net bir şekilde belirtir.</li>
+                                    <li><strong>Genel Özet:</strong> Sorunuza, Risale-i Nur'un temel prensipleri çerçevesinde, net ve bütüncül bir cevap sunulur.</li>
+                                    <li><strong>İlgili Esaslar, Nükteler ve Düsturlar:</strong> Eğer sorduğunuz konu, İhlas Risalesi'nin Dört Düsturu gibi belirli esaslara dayanıyorsa, bu bölüm özel olarak oluşturulur. "İhlas Risalesi'nin Dört Düsturu" gibi dinamik bir başlık altında, her bir düstur "Birinci Düstur", "İkinci Düstur" şeklinde numaralandırılarak, tam metin alıntı ve kaynaklarıyla birlikte sunulur.</li>
+                                    <li><strong>İlgili Bölümlerden Alıntılar:</strong> Konuyla alakalı Külliyat'ın farklı yerlerinden derlenmiş, kısaltılmamış orijinal metinler kaynaklarıyla birlikte listelenir.</li>
+                                    <li><strong>Ayet ve Hadis Vurguları:</strong> Gerek alıntılarda gerekse düsturlar bölümünde geçen Ayet-i Kerimeler ve Hadis-i Şerifler, metin içinde görsel olarak belirgin bir şekilde vurgulanır.</li>
+                                    <li><strong>Detaylı Kaynak Bilgisi:</strong> Sunulan her bir alıntının ve düsturun hangi eserden (örn: Sözler, Lem'alar) ve hangi bölümden (örn: On Birinci Lem'a) alındığı net bir şekilde belirtilir.</li>
+                                    <li><strong>Gelişmiş Paylaşım Seçenekleri:</strong>
+                                        <ul className="list-['-_'] list-inside ml-4 mt-1 space-y-1">
+                                            <li><strong>Kopyala:</strong> Soru, özet, düsturlar ve alıntıları içeren tüm cevabı düzenli bir metin olarak panoya kopyalar.</li>
+                                            <li><strong>Kart Olarak İndir:</strong> Cevap kartının ekranda görünen halini PNG olarak indirir.</li>
+                                            <li><strong>Sunum Olarak İndir:</strong> Sorduğunuz soruyu başlık olarak kullanan, sosyal medyada paylaşıma uygun, şık tasarımlı özel bir sunum kartını PNG olarak oluşturur ve indirir.</li>
+                                        </ul>
+                                    </li>
                                 </ul>
                             </section>
                             <section>
