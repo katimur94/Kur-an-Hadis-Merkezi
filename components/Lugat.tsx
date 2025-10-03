@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useCallback, ReactNode, useLayoutEffect, useEffect } from 'react';
+import React, { createContext, useState, useContext, useCallback, ReactNode, useLayoutEffect, useEffect, useRef } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import Spinner from './Spinner';
 
@@ -116,10 +116,12 @@ export const LugatContextProvider: React.FC<{ children: ReactNode }> = ({ childr
     isOpen: false, term: null, data: null, isLoading: false, error: null, position: { top: 0, left: 0 }
   });
 
+  const longPressTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const pressPositionRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const longPressTriggeredRef = useRef(false);
+
   const hideLugat = useCallback(() => {
     setState(prev => ({ ...prev, isOpen: false }));
-    // When hiding the popup, also clear the user's text selection for a cleaner experience
-    window.getSelection()?.removeAllRanges();
   }, []);
   
   const getLugatDefinition = async (term: string) => {
@@ -169,37 +171,66 @@ export const LugatContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   }, [state.isOpen, state.term]);
   
   useEffect(() => {
-    const handleClick = (event: MouseEvent) => {
-        const targetElement = event.target as Element;
-        if (targetElement.closest('.lugat-popup')) {
-            return; // Ignore clicks inside the popup
-        }
+    const handlePointerDown = (event: PointerEvent) => {
+        // Only trigger for primary pointer (main finger, left mouse button)
+        if (!event.isPrimary) return;
 
-        const selection = window.getSelection();
+        // Don't trigger if clicking inside an already open popup
+        if ((event.target as Element).closest('.lugat-popup')) return;
         
-        // If there's a valid selection
-        if (selection && !selection.isCollapsed && selection.toString().trim()) {
-            const term = selection.toString().trim();
-            const range = selection.getRangeAt(0);
-            const rect = range.getBoundingClientRect();
-            
-            // Check if click is inside the selection's bounding box
-            if (event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom) {
-                // Click is on selection, show popup
-                showLugat(term, { x: event.clientX, y: event.clientY });
-                return; // Stop further processing
-            }
-        }
+        // Store the position where the press started
+        pressPositionRef.current = { x: event.clientX, y: event.clientY };
+        longPressTriggeredRef.current = false;
 
-        // If we reach here, the click was not on a selection.
-        // If a popup is open, close it.
-        if (state.isOpen) {
-            hideLugat();
-        }
+        // Start a timer for the long press
+        longPressTimeoutRef.current = setTimeout(() => {
+            longPressTriggeredRef.current = true;
+            const selection = window.getSelection();
+            const selectedText = selection?.toString().trim();
+
+            if (selectedText) {
+                showLugat(selectedText, pressPositionRef.current);
+            }
+        }, 2000); // 2-second delay
     };
 
+    const handlePointerUp = () => {
+        // If the user releases before the timeout, it's not a long press
+        if (longPressTimeoutRef.current) {
+            clearTimeout(longPressTimeoutRef.current);
+        }
+    };
+    
+    const handleContextMenu = (event: MouseEvent) => {
+        // If our long press was triggered, prevent the browser's default context menu
+        if (longPressTriggeredRef.current) {
+            event.preventDefault();
+        }
+    };
+    
+    const handleClick = (event: MouseEvent) => {
+      // If the popup is open and the click is outside, close it.
+      if (state.isOpen && !(event.target as Element).closest('.lugat-popup')) {
+        hideLugat();
+      }
+    };
+
+    // Add event listeners to the whole document
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('pointerup', handlePointerUp);
+    document.addEventListener('contextmenu', handleContextMenu);
     document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
+
+    // Cleanup listeners on component unmount
+    return () => {
+        document.removeEventListener('pointerdown', handlePointerDown);
+        document.removeEventListener('pointerup', handlePointerUp);
+        document.removeEventListener('contextmenu', handleContextMenu);
+        document.removeEventListener('click', handleClick);
+        if (longPressTimeoutRef.current) {
+            clearTimeout(longPressTimeoutRef.current);
+        }
+    };
   }, [showLugat, hideLugat, state.isOpen]);
 
   return (
