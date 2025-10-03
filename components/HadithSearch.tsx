@@ -1,7 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import type { AIHadithResponse, HadithResult, SourceInfo, ImamCommentary, FiqhSourceInfo } from '../types';
 import Spinner from './Spinner';
+import { useLugat } from './Lugat';
+import { useLongPress } from '../hooks/useLongPress';
 
 // --- ICONS ---
 const HomeIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>);
@@ -196,6 +198,15 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const lastQueryRef = useRef<string>('');
     const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
     const model = 'gemini-2.5-flash';
+
+    // Lügat State
+    const { showLugat } = useLugat();
+    const handleLongPress = useCallback((text: string, { x, y }: {x: number, y: number}) => {
+        if (text) {
+            showLugat(text, { x, y });
+        }
+    }, [showLugat]);
+    const longPressHandlers = useLongPress(handleLongPress, { delay: 500 });
     
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
@@ -576,7 +587,7 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                     </button>
                 </header>
 
-                <main ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+                <main ref={chatContainerRef} {...longPressHandlers} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 select-text">
                     {messages.length === 0 && !isLoading && (
                         <div className="text-center text-gray-500 dark:text-gray-400 pt-16">
                             <p className="text-lg">Aramak istediğiniz konuyu yazın.</p>
