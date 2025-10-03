@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import * as htmlToImage from 'html-to-image';
 import type { RisaleResponse, RisaleSourceInfo, RisaleExcerpt, RisalePoint } from '../types';
 import Spinner from './Spinner';
+import { useLugat } from './Lugat';
+import { useLongPress } from '../hooks/useLongPress';
 
 // --- ICONS ---
 const HomeIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>);
@@ -196,6 +198,16 @@ const RisaleSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const presentationRef = useRef<HTMLDivElement>(null);
     const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
     const model = 'gemini-2.5-flash';
+
+    // Lügat State
+    const { showLugat } = useLugat();
+    const handleLongPress = useCallback((text: string, { x, y }: {x: number, y: number}) => {
+        if (text) {
+            showLugat(text, { x, y });
+        }
+    }, [showLugat]);
+    const longPressHandlers = useLongPress(handleLongPress, { delay: 500 });
+
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
@@ -605,7 +617,7 @@ Cevabını mutlaka JSON formatında döndür. Eğer konuyla ilgili bir cevap bul
                     </button>
                 </header>
 
-                <main ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+                <main ref={chatContainerRef} {...longPressHandlers} className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 select-text">
                     {messages.length === 0 && !isLoading && (
                         <div className="text-center text-gray-500 dark:text-gray-400 pt-16">
                             <p className="text-lg">Risale-i Nur'dan bir konu sorun.</p>
@@ -651,30 +663,25 @@ Cevabını mutlaka JSON formatında döndür. Eğer konuyla ilgili bir cevap bul
                                     {/* Summary */}
                                     <section>
                                         <h2 className="text-xl font-bold text-teal-600 dark:text-teal-400 mb-2">Genel Özet</h2>
-                                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed">{msg.content.overallSummary}</p>
+                                        <TaggedTextRenderer text={msg.content.overallSummary} />
                                     </section>
-
+                                    
                                     {/* Related Points */}
-                                    {msg.content.relatedPoints && msg.content.relatedPoints.length > 0 && (
+                                    {msg.content.relatedPoints?.length > 0 && (
                                         <section>
-                                            <h2 className="text-xl font-bold text-teal-600 dark:text-teal-400 mb-4">{msg.content.relatedPointsTitle}</h2>
-                                            <div className="space-y-6">
+                                            <h2 className="text-xl font-bold text-teal-600 dark:text-teal-400 mb-3">{msg.content.relatedPointsTitle}</h2>
+                                            <div className="space-y-4">
                                                 {msg.content.relatedPoints.map((point, i) => (
-                                                    <div key={i} className="flex items-start">
-                                                        <span className="text-xl font-bold text-teal-500 dark:text-teal-400 mr-4 mt-1">{i + 1}.</span>
-                                                        <div className="flex-1 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border-l-4 border-amber-500">
-                                                            <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">{point.pointTitle}</h3>
-                                                            <blockquote className="italic">
-                                                                <TaggedTextRenderer text={point.originalText} />
-                                                            </blockquote>
-                                                            <div className="text-right mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
-                                                                <button
-                                                                    onClick={() => setSourceModalData(point.source)}
-                                                                    className="inline-block px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 rounded-full hover:bg-amber-200 dark:hover:bg-amber-900 transition-colors"
-                                                                >
-                                                                    Kaynak: {point.source.book} - {point.source.section}
-                                                                </button>
-                                                            </div>
+                                                    <div key={i} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg space-y-3 border-l-4 border-amber-500">
+                                                        <h3 className="font-semibold text-gray-800 dark:text-gray-200">{point.pointTitle}</h3>
+                                                        <TaggedTextRenderer text={point.originalText} />
+                                                        <div className="text-right mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                                                            <button 
+                                                                onClick={() => setSourceModalData(point.source)}
+                                                                className="inline-block px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 rounded-full hover:bg-amber-200 dark:hover:bg-amber-900 transition-colors"
+                                                            >
+                                                                Kaynak: {point.source.book} - {point.source.section}
+                                                            </button>
                                                         </div>
                                                     </div>
                                                 ))}
@@ -688,12 +695,10 @@ Cevabını mutlaka JSON formatında döndür. Eğer konuyla ilgili bir cevap bul
                                             <h2 className="text-xl font-bold text-teal-600 dark:text-teal-400 mb-3">İlgili Bölümlerden Alıntılar</h2>
                                             <div className="space-y-4">
                                                 {msg.content.excerpts.map((excerpt, i) => (
-                                                    <div key={i} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border-l-4 border-amber-500 flex flex-col justify-between">
-                                                        <blockquote className="italic">
-                                                            <TaggedTextRenderer text={excerpt.originalText} />
-                                                        </blockquote>
-                                                        <div className="text-right mt-3 pt-2 border-t border-gray-200 dark:border-gray-600">
-                                                            <button
+                                                    <div key={i} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                                                        <TaggedTextRenderer text={excerpt.originalText} />
+                                                        <div className="text-right mt-2 pt-2 border-t border-gray-200 dark:border-gray-600">
+                                                             <button 
                                                                 onClick={() => setSourceModalData(excerpt.source)}
                                                                 className="inline-block px-3 py-1 text-xs font-semibold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/50 rounded-full hover:bg-amber-200 dark:hover:bg-amber-900 transition-colors"
                                                             >
@@ -705,10 +710,11 @@ Cevabını mutlaka JSON formatında döndür. Eğer konuyla ilgili bir cevap bul
                                             </div>
                                         </section>
                                     )}
+                                    
                                     {/* Disclaimer */}
                                     <div className="!mt-8 flex items-start space-x-3 p-3 text-sm text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/40 rounded-lg border border-amber-200 dark:border-amber-900/60 exclude-from-download">
                                         <InfoIcon className="w-5 h-5 flex-shrink-0 mt-0.5"/>
-                                        <p>Bu, yapay zeka tarafından Risale-i Nur Külliyatı'ndan derlenmiş bir özettir. En doğru bilgi için eserlerin aslına müracaat ediniz.</p>
+                                        <p>Bu, yapay zeka tarafından üretilmiş bir özettir. Sunulan kaynakları ve alimlerin eserlerini bizzat araştırmanız tavsiye edilir.</p>
                                     </div>
                                 </div>
                             )}
@@ -731,7 +737,7 @@ Cevabını mutlaka JSON formatında döndür. Eğer konuyla ilgili bir cevap bul
                             type="text"
                             value={userInput}
                             onChange={(e) => setUserInput(e.target.value)}
-                            placeholder="Bir konu yazın..."
+                            placeholder="Bir konu yazın (örn: İman hakikatleri)..."
                             className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                             disabled={isLoading}
                         />
@@ -745,7 +751,8 @@ Cevabını mutlaka JSON formatında döndür. Eğer konuyla ilgili bir cevap bul
                     </form>
                 </footer>
             </div>
-             {sourceModalData && (
+
+            {sourceModalData && (
                 <RisaleSourceDetailModal
                     sourceInfo={sourceModalData}
                     onClose={() => setSourceModalData(null)}
