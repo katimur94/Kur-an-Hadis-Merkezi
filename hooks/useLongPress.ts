@@ -4,49 +4,65 @@ export const useLongPress = (
   onLongPress: (text: string, position: { x: number; y: number }) => void,
   { delay = 500 } = {}
 ) => {
-  // Fix: Use ReturnType<typeof setTimeout> for browser and Node compatibility instead of NodeJS.Timeout
-  // Fix: Initialize useRef with null to fix "Expected 1 arguments, but got 0" error and be more explicit.
   const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressTriggered = useRef(false);
+  // Ref to store the pointer type from onPointerDown
+  const pointerType = useRef<string | null>(null);
 
-  // Fix: Use imported PointerEvent type directly
   const start = useCallback((event: PointerEvent) => {
-    // Stop listening for a long press if the user is using more than one finger
+    // Ignore multi-touch events
     if (event.pointerType === 'touch' && !event.isPrimary) {
       return;
     }
+    // Store the pointer type to differentiate between mouse and touch events later
+    pointerType.current = event.pointerType;
     longPressTriggered.current = false;
+    
+    // Set a timer. When it fires, it signifies that a long press has occurred.
     timeout.current = setTimeout(() => {
       longPressTriggered.current = true;
     }, delay);
   }, [delay]);
 
-  // Fix: Use imported PointerEvent type directly
   const clear = useCallback((event: PointerEvent) => {
+      // Always clear the timer when the pointer is released
       timeout.current && clearTimeout(timeout.current);
       
-      const selectedText = window.getSelection()?.toString().trim();
-
-      if (longPressTriggered.current && selectedText) {
-          // Prevent the default context menu
-          event.preventDefault();
-          onLongPress(selectedText, { x: event.clientX, y: event.clientY });
+      // For mouse devices, trigger the action on pointer up after the delay.
+      // This preserves the "long left-click" functionality on desktop.
+      if (pointerType.current === 'mouse' && longPressTriggered.current) {
+          const selectedText = window.getSelection()?.toString().trim();
+          if (selectedText) {
+              onLongPress(selectedText, { x: event.clientX, y: event.clientY });
+          }
       }
       
+      // Reset the long press trigger
       longPressTriggered.current = false;
     }, [onLongPress]
   );
 
+  const handleContextMenu = (e: MouseEvent) => {
+      // For touch devices, the contextmenu event is the long-press trigger.
+      if (pointerType.current === 'touch' && longPressTriggered.current) {
+          const selectedText = window.getSelection()?.toString().trim();
+          if (selectedText) {
+              // Prevent the native context menu (copy/paste) from appearing
+              e.preventDefault();
+              onLongPress(selectedText, { x: e.clientX, y: e.clientY });
+          }
+      }
+      
+      // Prevent default context menu if a long press was triggered on any device.
+      if (longPressTriggered.current) {
+          e.preventDefault();
+      }
+  };
+
   return {
     onPointerDown: start,
     onPointerUp: clear,
-    // Fix: Changed event type to MouseEvent to match React's onContextMenu prop type.
-    onContextMenu: (e: MouseEvent) => {
-        // Prevent context menu if a long press was triggered, to avoid conflicts.
-        if (longPressTriggered.current) {
-            e.preventDefault();
-        }
-    },
+    onContextMenu: handleContextMenu,
     onPointerLeave: () => {
         timeout.current && clearTimeout(timeout.current);
         longPressTriggered.current = false;
