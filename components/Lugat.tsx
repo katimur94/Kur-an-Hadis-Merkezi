@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useCallback, ReactNode, useLayoutEffect } from 'react';
+import React, { createContext, useState, useContext, useCallback, ReactNode, useLayoutEffect, useEffect } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import Spinner from './Spinner';
 
@@ -71,7 +71,7 @@ const LugatPopup: React.FC = () => {
     } else {
         setStyle(prev => ({ ...prev, opacity: 0 }));
     }
-  }, [isOpen, position, popupRef.current]);
+  }, [isOpen, position]);
 
   if (!isOpen) {
     return null;
@@ -80,7 +80,7 @@ const LugatPopup: React.FC = () => {
   return (
     <>
       <div className="fixed inset-0 bg-black/30 z-50 animate-fade-in" onClick={hideLugat}></div>
-      <div ref={popupRef} style={style} className="w-80 max-w-[90vw] bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-4 border border-gray-200 dark:border-gray-700 animate-scale-in transition-opacity duration-200">
+      <div ref={popupRef} style={style} className="lugat-popup w-80 max-w-[90vw] bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-4 border border-gray-200 dark:border-gray-700 animate-scale-in transition-opacity duration-200">
         <div className="flex justify-between items-center mb-3">
           <h4 className="text-lg font-bold text-gray-800 dark:text-gray-200 truncate">Lügat: "{term}"</h4>
           <button onClick={hideLugat} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" aria-label="Close popup"><CloseIcon className="w-5 h-5" /></button>
@@ -118,6 +118,8 @@ export const LugatContextProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const hideLugat = useCallback(() => {
     setState(prev => ({ ...prev, isOpen: false }));
+    // When hiding the popup, also clear the user's text selection for a cleaner experience
+    window.getSelection()?.removeAllRanges();
   }, []);
   
   const getLugatDefinition = async (term: string) => {
@@ -153,6 +155,8 @@ export const LugatContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   };
 
   const showLugat = useCallback((term: string, position: { x: number; y: number }) => {
+    if (state.isOpen && state.term === term) return;
+
     setState({
       isOpen: true,
       term,
@@ -162,7 +166,41 @@ export const LugatContextProvider: React.FC<{ children: ReactNode }> = ({ childr
       position: { top: position.y, left: position.x }
     });
     getLugatDefinition(term);
-  }, []);
+  }, [state.isOpen, state.term]);
+  
+  useEffect(() => {
+    const handleClick = (event: MouseEvent) => {
+        const targetElement = event.target as Element;
+        if (targetElement.closest('.lugat-popup')) {
+            return; // Ignore clicks inside the popup
+        }
+
+        const selection = window.getSelection();
+        
+        // If there's a valid selection
+        if (selection && !selection.isCollapsed && selection.toString().trim()) {
+            const term = selection.toString().trim();
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            
+            // Check if click is inside the selection's bounding box
+            if (event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom) {
+                // Click is on selection, show popup
+                showLugat(term, { x: event.clientX, y: event.clientY });
+                return; // Stop further processing
+            }
+        }
+
+        // If we reach here, the click was not on a selection.
+        // If a popup is open, close it.
+        if (state.isOpen) {
+            hideLugat();
+        }
+    };
+
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [showLugat, hideLugat, state.isOpen]);
 
   return (
     <LugatContext.Provider value={{ showLugat, hideLugat, state }}>
