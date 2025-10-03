@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getPageDetail, getSurahList, getSurahDetailForPageJump, getReciterList, getJuzVerses, getSurahVerses } from '../services/api';
 import type { SurahSummary, CombinedAyah, Reciter, PlaylistItem } from '../types';
 import Spinner from './Spinner';
+import { useLugat } from './Lugat';
+import { useLongPress } from '../hooks/useLongPress';
 
 // --- ICONS ---
 const HomeIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>);
@@ -20,6 +22,9 @@ const ARABIC_NUMERALS = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '
 const toArabicNumeral = (n: number) => n.toString().split('').map(digit => ARABIC_NUMERALS[parseInt(digit)]).join('');
 const FONT_LIST = [
     { name: 'Mushaf (Amiri Quran)', value: "'Amiri Quran', serif" },
+    { name: 'S. Hamdullah Mushaf', value: "'Katibeh', cursive" },
+    { name: 'Elif 1 (Almarai)', value: "'Almarai', sans-serif" },
+    { name: 'Elif 2 (Rakkas)', value: "'Rakkas', cursive" },
     { name: 'KFGQPC Hafs (Amiri)', value: "'Amiri', serif" },
     { name: 'Scheherazade', value: "'Scheherazade New', serif" },
     { name: 'Me Quran (Noto Naskh)', value: "'Noto Naskh Arabic', serif" },
@@ -61,6 +66,15 @@ const QuranReader: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const [isSettingsOpen, setSettingsOpen] = useState(false);
     const [navTab, setNavTab] = useState<'surah' | 'juz'>('surah');
     const contentRef = useRef<HTMLElement>(null);
+
+    // Lügat State
+    const { showLugat } = useLugat();
+    const handleLongPress = useCallback((text: string, { x, y }: {x: number, y: number}) => {
+        if (text) {
+            showLugat(text, { x, y });
+        }
+    }, [showLugat]);
+    const longPressHandlers = useLongPress(handleLongPress, { delay: 500 });
 
     // Effects for data fetching and saving settings
     useEffect(() => {
@@ -260,35 +274,63 @@ const QuranReader: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const currentlyPlayingAyahNumber = playlist[currentTrackIndex]?.ayahNumber;
 
     // Render Logic
-    const renderQuranViewContent = () => (
-         <div className="p-4 md:p-8 flex-1 flex items-center justify-center">
+    const renderQuranViewContent = () => {
+        const elements: React.ReactNode[] = [];
+        pageData.forEach((ayah, index) => {
+            // Add a separator if a new surah begins on this page
+            if (index > 0 && ayah.surah.number !== pageData[index - 1].surah.number) {
+                elements.push(
+                    <div key={`surah-header-${ayah.surah.number}`} className="w-full my-6 text-center">
+                        <h2 className="text-4xl font-amiri font-bold text-amber-500 dark:text-amber-400" style={{ fontFamily: FONT_LIST[0].value }}>{ayah.surah.name}</h2>
+                    </div>
+                );
+            }
+
+            elements.push(
+                <span
+                    key={ayah.number}
+                    onClick={() => handleAyahClick(ayah)}
+                    className={`cursor-pointer transition-colors duration-300 rounded px-1 ${currentlyPlayingAyahNumber === ayah.number ? 'font-bold text-teal-600 dark:text-teal-400' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                >
+                    {ayah.arabicText}
+                    <span className="text-sm font-sans text-amber-600 dark:text-amber-400 mx-1">۝{toArabicNumeral(ayah.numberInSurah)}</span>
+                </span>
+            );
+        });
+        
+        const surahNamesOnPage = [...new Set(pageData.map(a => a.surah.name))].join(' - ');
+
+        return (
+         <div {...longPressHandlers} className="p-4 md:p-8 flex-1 flex items-center justify-center select-text">
              <div className="w-full max-w-4xl bg-[#FDFCF8] dark:bg-[#2a2a2a] text-gray-900 dark:text-gray-100 shadow-lg rounded-lg p-6 border-4 border-double border-amber-400 dark:border-amber-600">
                 <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 mb-4 px-2">
                     <span>Cüz {pageData[0]?.juz}</span>
-                    <span>{pageData[0]?.surah.name}</span>
+                    <span>{surahNamesOnPage}</span>
                 </div>
                 <div className="text-center" style={{ fontFamily: fontFamily, fontSize: `${fontSize}px`, lineHeight: 2.5 }}>
-                    {pageData.map(ayah => (
-                        <span
-                            key={ayah.number}
-                            onClick={() => handleAyahClick(ayah)}
-                            className={`cursor-pointer transition-colors duration-300 rounded px-1 ${currentlyPlayingAyahNumber === ayah.number ? 'font-bold text-teal-600 dark:text-teal-400' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}`}
-                        >
-                            {ayah.arabicText}
-                            <span className="text-sm font-sans text-amber-600 dark:text-amber-400 mx-1">۝{toArabicNumeral(ayah.numberInSurah)}</span>
-                        </span>
-                    ))}
+                    {elements}
                 </div>
                 <div className="text-center text-xs text-gray-500 dark:text-gray-400 mt-4">
                     {currentPage}
                 </div>
             </div>
         </div>
-    );
+    )};
     
-    const renderTranslationViewContent = () => (
-        <div className="max-w-4xl mx-auto space-y-4 p-4 md:p-6">
-            {pageData.map((ayah) => (
+    const renderTranslationViewContent = () => {
+        const elements: React.ReactNode[] = [];
+
+        pageData.forEach((ayah, index) => {
+            // Add a separator if a new surah begins on this page
+            if (index > 0 && ayah.surah.number !== pageData[index - 1].surah.number) {
+                 elements.push(
+                    <div key={`surah-header-tr-${ayah.surah.number}`} className="my-8 text-center">
+                        <h2 className="text-3xl font-amiri font-bold text-amber-500 dark:text-amber-400" style={{ fontFamily: FONT_LIST[0].value }}>{ayah.surah.name}</h2>
+                    </div>
+                );
+            }
+
+            elements.push(
                 <div key={ayah.number} className="py-4 border-b border-gray-200 dark:border-gray-700 rounded-md p-2">
                     <p style={{fontFamily: fontFamily}} className={`text-right text-3xl leading-loose mb-4 cursor-pointer transition-colors duration-300 ${currentlyPlayingAyahNumber === ayah.number ? 'font-bold text-teal-600 dark:text-teal-400' : ''}`} onClick={() => handleAyahClick(ayah)}>
                         {ayah.arabicText} <span className="text-sm font-sans p-1 border rounded-full">{ayah.numberInSurah}</span>
@@ -298,9 +340,15 @@ const QuranReader: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                          {/* This button is now redundant as clicking text plays */}
                      </div>
                 </div>
-            ))}
-        </div>
-    );
+            );
+        });
+
+        return (
+             <div {...longPressHandlers} className="max-w-4xl mx-auto p-4 md:p-6 select-text">
+                {elements}
+            </div>
+        );
+    };
     
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
