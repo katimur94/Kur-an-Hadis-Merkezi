@@ -122,7 +122,7 @@ export const LugatContextProvider: React.FC<{ children: ReactNode }> = ({ childr
   
   const getLugatDefinition = async (term: string) => {
     try {
-      const prompt = `You are an expert Islamic terminologist and linguist, proficient in both classical Arabic and Ottoman/Modern Turkish. Provide a concise dictionary definition for the following term: "${term}". Structure your response in JSON. If the term has multiple distinct meanings, provide the most common one as the main 'definition' and list the others in an 'otherMeanings' array. If there are no other meanings, the array should be empty. Also include a 'sourceLanguage' field indicating if the word is primarily 'Arabic', 'Turkish', or 'Persian', etc.`;
+      const prompt = `Sen, hem klasik Arapça hem de Osmanlı/Modern Türkçe konusunda uzman bir İslami terminolog ve dilbilimcisin. Şu terim için kısa ve öz bir sözlük tanımı sağla: "${term}". Cevabını JSON formatında yapılandır. Eğer terimin birden fazla farklı anlamı varsa, en yaygın olanını ana 'definition' olarak ver ve diğerlerini 'otherMeanings' dizisinde listele. Başka anlamı yoksa, dizi boş olmalıdır. Ayrıca, kelimenin köken dilinin öncelikli olarak 'Arapça', 'Türkçe' veya 'Farsça' vb. olup olmadığını belirten bir 'sourceLanguage' alanı ekle. TÜM CEVAPLARIN VE AÇIKLAMALARIN TÜRKÇE OLMALIDIR.`;
       
       const response = await ai.models.generateContent({
         model,
