@@ -80,6 +80,9 @@ const toArabicNumeral = (n: number) => n.toString().split('').map(digit => ARABI
 const getPageWords = (pageData: CombinedAyah[]): string[] => pageData.flatMap(ayah => ayah.arabicText.split(' ').filter(Boolean));
 const FONT_LIST = [
     { name: 'Mushaf (Amiri Quran)', value: "'Amiri Quran', serif" },
+    { name: 'S. Hamdullah Mushaf', value: "'Katibeh', cursive" },
+    { name: 'Elif 1 (Almarai)', value: "'Almarai', sans-serif" },
+    { name: 'Elif 2 (Rakkas)', value: "'Rakkas', cursive" },
     { name: 'KFGQPC Hafs (Amiri)', value: "'Amiri', serif" },
     { name: 'Scheherazade', value: "'Scheherazade New', serif" },
     { name: 'Me Quran (Noto Naskh)', value: "'Noto Naskh Arabic', serif" },
@@ -423,8 +426,50 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
     // --- Render ---
     let wordCounter = -1;
     const analyzedErrorIndices = new Set(analysisResults.map(r => r.wordIndex));
-    // FIX: Explicitly cast v to LiveWordStatus to prevent potential type errors where 'status' is accessed on an 'unknown' type.
     const combinedWordStatuses = { ...sessionWordStatuses, ...Object.fromEntries(Object.entries(liveWordStatuses).filter(([,v]) => (v as LiveWordStatus).status === 'correct').map(([k]) => [k, 'correct'])) };
+
+    const pageContentElements: React.ReactNode[] = [];
+    pageData.forEach((ayah, index) => {
+        if (index > 0 && ayah.surah.number !== pageData[index - 1].surah.number) {
+            pageContentElements.push(
+                <div key={`surah-header-${ayah.surah.number}`} className="w-full my-6 text-center">
+                    <h2 className="text-4xl font-amiri font-bold text-amber-500 dark:text-amber-400" style={{ fontFamily: FONT_LIST[0].value }}>{ayah.surah.name}</h2>
+                </div>
+            );
+        }
+        pageContentElements.push(
+            <div key={ayah.number} className="inline-block">
+                {ayah.arabicText.split(' ').filter(Boolean).map((word) => {
+                    wordCounter++;
+                    const currentWordIndex = wordCounter;
+                    const liveStatus = liveWordStatuses[currentWordIndex]?.status;
+                    const isAnalyzedError = recitationStatus === 'analyzed' && analyzedErrorIndices.has(currentWordIndex);
+                    const isCorrect = !!combinedWordStatuses[currentWordIndex];
+                    
+                    let className = 'transition-all duration-300 rounded-md px-1';
+                    if (isAnalyzedError) {
+                        className += ' bg-red-200 dark:bg-red-800/50 text-red-700 dark:text-red-300 cursor-pointer';
+                    } else if (isCorrect) {
+                        className += ' text-blue-600 dark:text-blue-400';
+                    } else if (recitationStatus === 'recording' && liveStatus === 'error') {
+                        className += ' text-red-500 underline decoration-wavy decoration-red-500';
+                    }
+
+                    return (
+                        <span
+                            key={currentWordIndex}
+                            ref={(el) => { wordRefs.current[currentWordIndex] = el; }}
+                            onClick={(e) => { if (isAnalyzedError) handleWordClick(currentWordIndex, e.currentTarget); }}
+                            className={className}
+                        >
+                            {word}{' '}
+                        </span>
+                    );
+                })}
+                <span className="text-sm font-sans text-amber-600 dark:text-amber-400 mx-1">۝{toArabicNumeral(ayah.numberInSurah)}</span>
+            </div>
+        );
+    });
 
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -490,38 +535,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                                <span>{pageData[0]?.surah.name}</span>
                            </div>
                            <div dir="rtl" className="text-center" style={{ fontFamily: fontFamily, fontSize: `${fontSize}px`, lineHeight: 2.5 }}>
-                                {pageData.map(ayah => (
-                                    <div key={ayah.number} className="inline-block">
-                                        {ayah.arabicText.split(' ').filter(Boolean).map((word) => {
-                                            wordCounter++;
-                                            const currentWordIndex = wordCounter;
-                                            const liveStatus = liveWordStatuses[currentWordIndex]?.status;
-                                            const isAnalyzedError = recitationStatus === 'analyzed' && analyzedErrorIndices.has(currentWordIndex);
-                                            const isCorrect = !!combinedWordStatuses[currentWordIndex];
-                                            
-                                            let className = 'transition-all duration-300 rounded-md px-1';
-                                            if (isAnalyzedError) {
-                                                className += ' bg-red-200 dark:bg-red-800/50 text-red-700 dark:text-red-300 cursor-pointer';
-                                            } else if (isCorrect) {
-                                                className += ' text-blue-600 dark:text-blue-400';
-                                            } else if (recitationStatus === 'recording' && liveStatus === 'error') {
-                                                className += ' text-red-500 underline decoration-wavy decoration-red-500';
-                                            }
-
-                                            return (
-                                                <span
-                                                    key={currentWordIndex}
-                                                    ref={(el) => { wordRefs.current[currentWordIndex] = el; }}
-                                                    onClick={(e) => { if (isAnalyzedError) handleWordClick(currentWordIndex, e.currentTarget); }}
-                                                    className={className}
-                                                >
-                                                    {word}{' '}
-                                                </span>
-                                            );
-                                        })}
-                                        <span className="text-sm font-sans text-amber-600 dark:text-amber-400 mx-1">۝{toArabicNumeral(ayah.numberInSurah)}</span>
-                                    </div>
-                                ))}
+                                {pageContentElements}
                            </div>
                            <div className="text-center text-xs text-gray-500 dark:text-gray-400 mt-4">{currentPage}</div>
                         </div>
