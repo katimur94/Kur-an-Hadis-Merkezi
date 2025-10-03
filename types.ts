@@ -17,6 +17,7 @@ export interface SurahInfo {
   number: number;
   name: string;
   englishName: string;
+  revelationType: string;
 }
 
 export interface CombinedAyah {
