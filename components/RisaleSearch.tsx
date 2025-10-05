@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import * as htmlToImage from 'html-to-image';
+import * as pako from 'pako';
 import type { RisaleResponse, RisaleSourceInfo, RisaleExcerpt, RisalePoint } from '../types';
 import Spinner from './Spinner';
 
@@ -18,7 +19,6 @@ const HistoryIcon: React.FC<{ className?: string }> = ({ className }) => (<svg x
 const TrashIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>);
 const EditIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>);
 const ShareIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.186 2.25 2.25 0 0 0-3.933 2.186Z" /></svg>);
-const ImportIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m.75 12 3 3m0 0 3-3m-3 3v-6m-1.5-9H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>);
 
 type Message = {
     role: 'user';
@@ -188,6 +188,7 @@ const RisaleSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
     const [editingTitle, setEditingTitle] = useState('');
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [sharingId, setSharingId] = useState<string | null>(null);
 
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -478,16 +479,29 @@ Cevabını mutlaka JSON formatında döndür. Eğer konuyla ilgili bir cevap bul
         setEditingTitle('');
     };
 
-    const handleShareHistoryItem = (e: React.MouseEvent, item: HistoryItem) => {
+    const handleShareHistoryItem = async (e: React.MouseEvent, item: HistoryItem) => {
         e.stopPropagation();
+        setSharingId(item.id);
         try {
             const jsonString = JSON.stringify(item);
-            const encodedString = btoa(unescape(encodeURIComponent(jsonString)));
-            const url = `${window.location.origin}${window.location.pathname}#/?module=risale&data=${encodedString}`;
-            navigator.clipboard.writeText(url);
-            showNotification('Paylaşım linki panoya kopyalandı!');
+            const compressed = pako.deflate(jsonString);
+    
+            let binaryString = '';
+            for (let i = 0; i < compressed.length; i++) {
+                binaryString += String.fromCharCode(compressed[i]);
+            }
+            
+            const encodedData = btoa(binaryString);
+            const shareUrl = `${window.location.origin}${window.location.pathname}#/?module=risale&v=2&data=${encodeURIComponent(encodedData)}`;
+    
+            navigator.clipboard.writeText(shareUrl);
+            showNotification('Paylaşım linki kopyalandı!');
+    
         } catch (err) {
+            console.error("Paylaşım başarısız:", err);
             showNotification('Link oluşturulurken bir hata oluştu.', 'error');
+        } finally {
+            setSharingId(null);
         }
     };
     
@@ -541,7 +555,9 @@ Cevabını mutlaka JSON formatında döndür. Eğer konuyla ilgili bir cevap bul
                                         </button>
                                         <div className="flex items-center space-x-1 pr-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button onClick={(e) => handleEditHistoryItem(e, item)} title="Yeniden Adlandır" className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"><EditIcon className="w-4 h-4 text-gray-500" /></button>
-                                            <button onClick={(e) => handleShareHistoryItem(e, item)} title="Paylaş" className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"><ShareIcon className="w-4 h-4 text-gray-500" /></button>
+                                            <button onClick={(e) => handleShareHistoryItem(e, item)} title="Paylaş" className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600" disabled={sharingId === item.id}>
+                                                {sharingId === item.id ? <MiniSpinner /> : <ShareIcon className="w-4 h-4 text-gray-500" />}
+                                            </button>
                                             <button onClick={(e) => handleDeleteHistoryItem(e, item.id)} title="Sil" className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-600"><TrashIcon className="w-4 h-4 text-red-500" /></button>
                                         </div>
                                     </div>
