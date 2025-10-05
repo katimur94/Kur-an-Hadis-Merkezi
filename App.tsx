@@ -275,36 +275,26 @@ const App: React.FC = () => {
                                     <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
                                         <li><strong>İki Farklı Görünüm:</strong> "Kur'an Görünümü" (sadece Arapça) ve "Meal Görünümü" (Arapça ve Türkçe meal) arasında geçiş yapın.</li>
                                         <li><strong>Dinamik Dinleme Modları:</strong> Cüz, Sure, sayfa veya tek ayet bazında dinleme yapın.</li>
-                                        <li><strong>Canlı Takip ve Otomatik Sayfa Geçişi:</strong> Cüz veya Sure dinlerken okunan ayet vurgulanır ve sayfa otomatik olarak ilerler.</li>
-                                        <li><strong>Ayarlar & İlerleme Kaydı:</strong> Farklı kâriler seçin, yazı tipini ayarlayın. Kaldığınız sayfa otomatik kaydedilir.</li>
+                                        <li><strong>Canlı Takip ve Otomatik Sayfa Geçişi:</strong> Cüz veya Sure dinlerken okuma yapılan ayet vurgulanır ve okuma ilerledikçe sayfalar otomatik olarak değişir.</li>
+                                        <li><strong>Gelişmiş Ayarlar:</strong> Farklı kâriler (okuyucular) arasından seçim yapın, Arapça yazı tipini ve boyutunu kişiselleştirin.</li>
                                     </ul>
                                 </section>
                                  <section>
-                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Kuran Okuma ve Hata Tespiti</h3>
+                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Yapay Zeka Destekli Modüller</h3>
                                     <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-                                        <li><strong>Canlı Takip & Kalıcı İlerleme:</strong> Okuduğunuz kelimeler mavi ile işaretlenir ve bu ilerleme cihazınıza kaydedilir.</li>
-                                        <li><strong>Akıllı Devam Etme:</strong> Sistem kaldığınız ilk okunmamış kelimeden devam etmenizi sağlar.</li>
-                                        <li><strong>İsteğe Bağlı Analiz:</strong> "Analiz Et" butonu ile okumanızdaki tecvid hatalarını yapay zeka ile tespit edin.</li>
-                                        <li><strong>İnteraktif Hata Detayları:</strong> Kırmızı işaretli hatalı kelimelere tıklayarak hatanın açıklamasını ve tecvid kuralını öğrenin.</li>
+                                        <li><strong>Hadis Araştırma:</strong> Bir konu hakkında hadisleri kaynaklarıyla birlikte bulun. Hadise tıklayarak mezhep imamlarının o hadis hakkındaki yorumlarını ve fıkhi çıkarımlarını anında öğrenin.</li>
+                                        <li><strong>Fıkıh Soru & Cevap:</strong> Fıkhi sorularınıza, dört mezhebin görüşlerini delilleriyle (ayet ve hadisler) birlikte sunan, yapay zeka destekli, kaynaklı ve detaylı cevaplar alın.</li>
+                                        <li><strong>Risale-i Nur'da Ara:</strong> Merak ettiğiniz konuları sorun ve Risale-i Nur külliyatından, konuyla ilgili temel prensipleri, özetleri ve kaynaklı alıntıları içeren kapsamlı cevaplar elde edin.</li>
+                                        <li><strong>Kuran Okuma ve Hata Tespiti:</strong> Kur'an-ı Kerim'i sesli olarak okuyun, yapay zeka okumanızı analiz etsin. Tecvid ve telaffuz hatalarınızı tespit edip, açıklamaları ve ilgili tecvid kurallarıyla birlikte size sunsun.</li>
                                     </ul>
                                 </section>
                                 <section>
-                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Yapay Zeka Destekli Araştırma Araçları</h3>
-                                    <p className="text-gray-600 dark:text-gray-300 mb-4">Hadis, Fıkıh ve Risale-i Nur modülleri, aradığınız bilgiye kaynaklarıyla birlikte ulaşmanızı sağlar.</p>
-                                    <h4 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mt-4 mb-2">Geçmiş Yönetimi ve Paylaşım</h4>
+                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Ortak Özellikler</h3>
                                     <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-                                        <li><strong>Kişiselleştirme:</strong> Her bir geçmiş arama öğesini daha sonra hatırlamak için yeniden adlandırabilir veya tek tek silebilirsiniz.</li>
-                                        <li><strong>Paylaşma:</strong> Her aramanın yanında bulunan 'Paylaş' ikonu ile o aramanın sonucunu içeren özel bir kod oluşturup panonuza kopyalayabilirsiniz.</li>
-                                        <li><strong>İçe Aktarma:</strong> Başkasından aldığınız bir paylaşım kodunu, geçmiş panelindeki ilgili alana yapıştırarak o kişinin aldığı cevabın aynısını kendi geçmişinize ekleyebilirsiniz.</li>
-                                    </ul>
-                                </section>
-                                <section>
-                                     <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Genel Özellikler</h3>
-                                    <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-                                        <li><strong>Dahili Lügat (Sözlük):</strong> Okuma ve araştırma sayfalarında, anlamını bilmediğiniz bir kelimenin üzerine mobil cihazda basılı tutarak veya masaüstünde fare ile seçerek yapay zeka destekli lügatı açabilir, kelimenin tanımını, kökenini ve diğer anlamlarını öğrenebilirsiniz.</li>
-                                        <li><strong>Karanlık Mod:</strong> Göz yormayan bir okuma deneyimi için aydınlık ve karanlık mod arasında geçiş yapabilirsiniz. Seçiminiz kaydedilir.</li>
-                                        <li><strong>Mobil Uyumluluk:</strong> Hem masaüstü hem de mobil cihazlarda rahat bir kullanım için tasarlanmıştır.</li>
-                                        <li><strong>Veri Yedekleme:</strong> Ana menüdeki "Yedekle & Geri Yükle" özelliği ile tüm geçmişinizi ve ilerlemenizi başka bir cihaza kolayca aktarabilirsiniz.</li>
+                                        <li><strong>Geçmiş Yönetimi:</strong> Tüm yapay zeka modüllerindeki aramalarınız ve sorularınız otomatik olarak kaydedilir. Geçmişten bir aramayı tekrar görüntüleyebilir, silebilir, yeniden adlandırabilir veya bir kod oluşturarak başka biriyle paylaşabilirsiniz.</li>
+                                        <li><strong>Yedekle & Geri Yükle:</strong> Tüm uygulama verilerinizi (geçmişler, ayarlar, ilerlemeler) tek bir kodla yedekleyin. Bu kodu kullanarak verilerinizi başka bir cihaza kolayca aktarın.</li>
+                                        <li><strong>Koyu & Açık Tema:</strong> Göz zevkinize uygun temayı seçin.</li>
+                                        <li><strong>Lügat (Sözlük) Aracı:</strong> Risale-i Nur ve Fıkıh modüllerinde, bilmediğiniz kelimeleri veya tabirleri seçerek anında anlamlarını öğrenin.</li>
                                     </ul>
                                 </section>
                             </div>
@@ -314,7 +304,7 @@ const App: React.FC = () => {
             </div>
         );
     }
-    
+
     return (
         <LugatContextProvider>
             {content}
@@ -322,4 +312,5 @@ const App: React.FC = () => {
     );
 };
 
+// FIX: Add default export for the App component.
 export default App;
