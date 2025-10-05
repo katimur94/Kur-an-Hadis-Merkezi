@@ -71,6 +71,8 @@ const App: React.FC = () => {
                 'recitationLastPage',
                 'recitationFontSize',
                 'recitationFontFamily',
+                'namazVakitleriHistory', // Add prayer times history to backup
+                'namazVakitleriLocation', // Add last prayer time location to backup
             ];
 
             keysToBackup.forEach(key => {
@@ -170,8 +172,8 @@ const App: React.FC = () => {
                             <p className="text-gray-600 dark:text-gray-300">İlgilendiğiniz konulardaki hadisleri yapay zeka yardımıyla bulun ve fıkhi analizlerini inceleyin.</p>
                         </button>
                         <button onClick={() => navigateTo('recitation')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
-                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Kuran Okuma ve Hata Tespiti</h2>
-                            <p className="text-gray-600 dark:text-gray-300">Ayetleri okuyun ve yapay zeka ile telaffuz hatalarınızı tespit edin.</p>
+                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Kıraat Asistanı (Tecvid)</h2>
+                            <p className="text-gray-600 dark:text-gray-300">Ayetleri okuyun ve yapay zeka ile telaffuz ve tecvid hatalarınızı tespit edin.</p>
                         </button>
                         <button onClick={() => navigateTo('fiqh')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
                             <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Fıkıh Soru & Cevap</h2>
@@ -219,7 +221,7 @@ const App: React.FC = () => {
                                 {backupTab === 'create' ? (
                                     <div className="space-y-4">
                                         <h3 className="text-lg font-semibold">Tüm Uygulama Verilerinizi Yedekleyin</h3>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">Bu işlem, tüm arama geçmişlerinizi (Hadis, Fıkıh, Risale) ve Kur'an okuma ilerlemenizi/ayarlarınızı tek bir koda dönüştürür. Bu kodu güvenli bir yere kaydedin ve başka bir cihaza verilerinizi aktarmak için kullanın.</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Bu işlem, tüm arama geçmişlerinizi (Hadis, Fıkıh, Risale), namaz vakti geçmişinizi ve Kur'an okuma ilerlemenizi/ayarlarınızı tek bir koda dönüştürür. Bu kodu güvenli bir yere kaydedin ve başka bir cihaza verilerinizi aktarmak için kullanın.</p>
                                         <button onClick={handleCreateBackup} className="w-full px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition-colors">
                                             Yedekleme Kodu Oluştur
                                         </button>
@@ -257,44 +259,55 @@ const App: React.FC = () => {
                     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setInfoModalOpen(false)}>
                         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col animate-scale-in" onClick={e => e.stopPropagation()}>
                             <div className="flex justify-between items-center p-4 border-b dark:border-gray-700 sticky top-0 bg-white dark:bg-gray-800 rounded-t-xl">
-                                <h2 className="text-2xl font-bold">Uygulama Rehberi</h2>
+                                <h2 className="text-2xl font-bold">Dijital Medrese Kullanım Rehberi</h2>
                                 <button onClick={() => setInfoModalOpen(false)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"><CloseIcon className="w-6 h-6" /></button>
                             </div>
-                            <div className="p-6 overflow-y-auto space-y-6">
+                            <div className="p-6 overflow-y-auto space-y-8 text-gray-700 dark:text-gray-300 leading-relaxed">
                                  <section>
-                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Namaz Vakitleri</h3>
-                                    <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-                                        <li><strong>Otomatik Konum:</strong> Tarayıcınızdan izin alarak bulunduğunuz yere göre namaz vakitlerini otomatik olarak getirir.</li>
-                                        <li><strong>Manuel Arama:</strong> İzin vermezseniz veya konum bulunamazsa, şehir ve ülke girerek vakitleri arayabilirsiniz.</li>
-                                        <li><strong>Geri Sayım:</strong> Bir sonraki namaz vaktine ne kadar süre kaldığını anlık olarak gösterir.</li>
-                                        <li><strong>Tarih Bilgisi:</strong> Hem Miladi hem de Hicri takvime göre güncel tarihi gösterir.</li>
+                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Namaz Vakitleri</h3>
+                                    <ul className="list-disc list-inside space-y-2">
+                                        <li><strong>Otomatik Konum Tespiti:</strong> Uygulama ilk açıldığında, tarayıcınızdan konum izni isteyecektir. İzin verdiğiniz takdirde, bulunduğunuz yere en uygun namaz vakitleri otomatik olarak yüklenir.</li>
+                                        <li><strong>Manuel Arama:</strong> İzin vermediyseniz veya farklı bir konum aramak isterseniz, "Şehir" ve "Ülke" bilgilerini girerek istediğiniz yerin vakitlerini arayabilirsiniz.</li>
+                                        <li><strong>Geri Sayım & Tarih:</strong> Bir sonraki namaz vaktine kalan süreyi canlı olarak gösterir ve Miladi, Rumi, Hicri takvimlere göre güncel tarihi belirtir.</li>
+                                        <li><strong>Geçmiş Yönetimi:</strong> Yaptığınız aramalar, `Geçmiş` paneline otomatik olarak kaydedilir. Buradan daha önceki bir konumu tek tıkla tekrar yükleyebilir, silebilir, bir kod oluşturarak paylaşabilir veya size gönderilen bir konum kodunu içe aktarabilirsiniz.</li>
                                     </ul>
                                 </section>
                                 <section>
-                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Kur'an-ı Kerim Okuyucu</h3>
-                                    <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-                                        <li><strong>İki Farklı Görünüm:</strong> "Kur'an Görünümü" (sadece Arapça) ve "Meal Görünümü" (Arapça ve Türkçe meal) arasında geçiş yapın.</li>
-                                        <li><strong>Dinamik Dinleme Modları:</strong> Cüz, Sure, sayfa veya tek ayet bazında dinleme yapın.</li>
-                                        <li><strong>Canlı Takip ve Otomatik Sayfa Geçişi:</strong> Cüz veya Sure dinlerken okuma yapılan ayet vurgulanır ve okuma ilerledikçe sayfalar otomatik olarak değişir.</li>
-                                        <li><strong>Gelişmiş Ayarlar:</strong> Farklı kâriler (okuyucular) arasından seçim yapın, Arapça yazı tipini ve boyutunu kişiselleştirin.</li>
-                                    </ul>
-                                </section>
-                                 <section>
-                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Yapay Zeka Destekli Modüller</h3>
-                                    <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-                                        <li><strong>Hadis Araştırma:</strong> Bir konu hakkında hadisleri kaynaklarıyla birlikte bulun. Hadise tıklayarak mezhep imamlarının o hadis hakkındaki yorumlarını ve fıkhi çıkarımlarını anında öğrenin.</li>
-                                        <li><strong>Fıkıh Soru & Cevap:</strong> Fıkhi sorularınıza, dört mezhebin görüşlerini delilleriyle (ayet ve hadisler) birlikte sunan, yapay zeka destekli, kaynaklı ve detaylı cevaplar alın.</li>
-                                        <li><strong>Risale-i Nur'da Ara:</strong> Merak ettiğiniz konuları sorun ve Risale-i Nur külliyatından, konuyla ilgili temel prensipleri, özetleri ve kaynaklı alıntıları içeren kapsamlı cevaplar elde edin.</li>
-                                        <li><strong>Kuran Okuma ve Hata Tespiti:</strong> Kur'an-ı Kerim'i sesli olarak okuyun, yapay zeka okumanızı analiz etsin. Tecvid ve telaffuz hatalarınızı tespit edip, açıklamaları ve ilgili tecvid kurallarıyla birlikte size sunsun.</li>
+                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Kur'an-ı Kerim Okuyucu</h3>
+                                    <ul className="list-disc list-inside space-y-2">
+                                        <li><strong>İki Farklı Görünüm:</strong> "Kur'an Görünümü" (geleneksel Mushaf düzeni) ve "Meal Görünümü" (her ayetin altında meali) arasında geçiş yapabilirsiniz.</li>
+                                        <li><strong>Gelişmiş Sesli Dinleme:</strong> Cüz, Sure, Sayfa veya tek bir Ayet bazında dinleme yapabilirsiniz. Cüz veya Sure dinlerken, o an okunan ayet metin üzerinde canlı olarak vurgulanır ve okuma bir sonraki sayfaya geçtiğinde sayfa otomatik olarak değişir.</li>
+                                        <li><strong>Kişiselleştirme:</strong> `Ayarlar` menüsünden dilediğiniz kâriyi seçebilir, Arapça metnin yazı tipini ve boyutunu göz zevkinize göre ayarlayabilirsiniz.</li>
                                     </ul>
                                 </section>
                                 <section>
-                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-2">Ortak Özellikler</h3>
-                                    <ul className="list-disc list-inside space-y-2 text-gray-600 dark:text-gray-300">
-                                        <li><strong>Geçmiş Yönetimi:</strong> Tüm yapay zeka modüllerindeki aramalarınız ve sorularınız otomatik olarak kaydedilir. Geçmişten bir aramayı tekrar görüntüleyebilir, silebilir, yeniden adlandırabilir veya bir kod oluşturarak başka biriyle paylaşabilirsiniz.</li>
-                                        <li><strong>Yedekle & Geri Yükle:</strong> Tüm uygulama verilerinizi (geçmişler, ayarlar, ilerlemeler) tek bir kodla yedekleyin. Bu kodu kullanarak verilerinizi başka bir cihaza kolayca aktarın.</li>
-                                        <li><strong>Koyu & Açık Tema:</strong> Göz zevkinize uygun temayı seçin.</li>
-                                        <li><strong>Lügat (Sözlük) Aracı:</strong> Risale-i Nur ve Fıkıh modüllerinde, bilmediğiniz kelimeleri veya tabirleri seçerek anında anlamlarını öğrenin.</li>
+                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Kıraat Asistanı (Tecvid & Telaffuz)</h3>
+                                     <p className="mb-2">Yapay zeka ile Kur'an okumanızı analiz ederek tecvid ve telaffuz hatalarınızı tespit etmenize yardımcı olur.</p>
+                                    <ol className="list-decimal list-inside space-y-2 pl-2">
+                                        <li><strong>Sayfayı Seçin:</strong> Sol menüden okumak istediğiniz sure ve sayfayı seçin.</li>
+                                        <li><strong>Kaydı Başlatın:</strong> Ekranın altındaki büyük `Mikrofon` ikonuna basın. Tarayıcınız mikrofon erişim izni isteyebilir.</li>
+                                        <li><strong>Okuyun:</strong> Sayfayı sesli olarak okumaya başlayın. Doğru telaffuz ettiğiniz kelimeler anlık olarak mavi ile vurgulanacaktır.</li>
+                                        <li><strong>Kaydı Durdurun:</strong> Okumanız bittiğinde, kırmızıya dönen `Durdur` ikonuna tekrar basın.</li>
+                                        <li><strong>Analiz Edin:</strong> Üst menüdeki `Analiz Et` (hedef ikonu) butonuna basın. Yapay zeka, kaydınızı orijinal metinle karşılaştıracaktır.</li>
+                                        <li><strong>Sonuçları İnceleyin:</strong> Analiz tamamlandığında, tespit edilen hatalar kırmızı ile vurgulanır. Hatalı bir kelimeye tıkladığınızda, hatanın ne olduğunu, nasıl düzeltileceğini ve ilgili tecvid kuralını açıklayan bir pencere açılır.</li>
+                                        <li><strong>İlerleme Takibi:</strong> Kenar çubuğunda, her sayfanın yanında ilerleme durumunuzu (○ Başlanmadı, ▶ Devam Ediyor, ✔ Tamamlandı) görebilirsiniz.</li>
+                                    </ol>
+                                </section>
+                                 <section>
+                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Yapay Zeka Destekli Araştırma Modülleri</h3>
+                                    <ul className="list-disc list-inside space-y-3">
+                                        <li><strong>Hadis Araştırma:</strong> Bir konu (örn: "sadakanın fazileti") hakkında hadisleri kaynaklarıyla aratın. <strong className="text-amber-600 dark:text-amber-400">Önemli:</strong> Listelenen bir hadise tıkladığınızda, yapay zeka o hadis özelinde dört büyük mezhep imamının fıkhi yorumlarını ve hükümlerini kaynaklarıyla birlikte size sunar.</li>
+                                        <li><strong>Fıkıh Soru & Cevap:</strong> Fıkhi bir soru sorun (örn: "Seferi namazı nasıl kılınır?"). Yapay zeka, sorunuza dört mezhebin görüşlerini, delilleri olan ayet ve hadisleri, ve her bilginin kaynağını içeren yapılandırılmış, detaylı bir cevap oluşturur.</li>
+                                        <li><strong>Risale-i Nur'da Ara:</strong> Merak ettiğiniz bir konuyu (örn: "Şükür hakikati") sorun. Yapay zeka, Risale-i Nur Külliyatı'ndan konunun özetini, ilgili bahisleri ve temel prensipleri (düsturlar, esaslar) kaynaklarıyla birlikte derleyerek sunar.</li>
+                                    </ul>
+                                </section>
+                                <section>
+                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Ortak Özellikler</h3>
+                                    <ul className="list-disc list-inside space-y-2">
+                                        <li><strong>Geçmiş Yönetimi:</strong> Tüm araştırma modüllerinin sol üst köşesindeki `Geçmiş` ikonuyla önceki aramalarınıza ulaşabilirsiniz. Geçmiş bir aramayı yeniden adlandırabilir, silebilir, bir kodla paylaşabilir veya size gelen bir kodu içe aktarabilirsiniz.</li>
+                                        <li><strong>Yedekle & Geri Yükle:</strong> Anasayfadaki bu özellik ile tüm uygulama verilerinizi (geçmişler, ayarlar, kıraat ilerlemesi) tek bir koda dönüştürüp yedekleyebilirsiniz. Bu kodu kullanarak verilerinizi başka bir cihaza kolayca aktarabilirsiniz. <strong className="text-red-500">Uyarı:</strong> Geri yükleme, mevcut verilerin üzerine yazar.</li>
+                                        <li><strong>Lügat (Sözlük) Aracı:</strong> Ekranın bir köşesinde sürekli duran, üzerinde kitap ikonu olan bir baloncuk göreceksiniz. Bu balonu basılı tutarak ekranın istediğiniz yerine sürükleyebilir ve balona tıklayarak açılan pencereye anlamını merak ettiğiniz kelimeyi yazıp aratabilirsiniz.</li>
+                                        <li><strong>Tema Seçimi:</strong> Anasayfadaki Ay/Güneş ikonuyla açık ve koyu tema arasında geçiş yapabilirsiniz.</li>
                                     </ul>
                                 </section>
                             </div>
