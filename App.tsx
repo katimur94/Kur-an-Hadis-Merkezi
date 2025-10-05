@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import * as pako from 'pako';
 import QuranReader from './components/QuranReader';
 import HadithSearch from './components/HadithSearch';
 import QuranRecitationChecker from './components/QuranRecitationChecker';
@@ -40,36 +41,60 @@ const App: React.FC = () => {
         setCurrentView(view);
     };
 
-     useEffect(() => {
-        const handleUrlImport = () => {
-            const hash = window.location.hash;
-            if (!hash.startsWith('#/?module=')) return;
+     const handleUrlImport = async () => {
+        const hash = window.location.hash;
+        if (!hash.startsWith('#/?')) return;
 
-            try {
-                const params = new URLSearchParams(hash.substring(3)); // remove '#/?'
-                const module = params.get('module');
-                const data = params.get('data');
+        try {
+            const params = new URLSearchParams(hash.substring(3));
+            const module = params.get('module');
+            const data = params.get('data');
+            const type = params.get('type');
+            const url = params.get('url');
+            const version = params.get('v');
 
-                if (module && data) {
-                    const decodedString = decodeURIComponent(escape(atob(data)));
-                    const validModules: View[] = ['hadith', 'fiqh', 'risale', 'namaz'];
-                    
-                    if (validModules.includes(module as View)) {
-                        sessionStorage.setItem(`importedDataFor_${module}`, decodedString);
-                        navigateTo(module as View);
-                        showNotification('Paylaşılan içerik başarıyla yüklendi!', 'success');
-                    } else {
-                        throw new Error('Invalid module');
-                    }
+            if (!module) return;
+
+            let importedDataString: string | null = null;
+            
+            if (version === '2' && data) { // New compressed format
+                const binaryString = atob(decodeURIComponent(data));
+                const compressed = new Uint8Array(binaryString.length);
+                for (let i = 0; i < binaryString.length; i++) {
+                    compressed[i] = binaryString.charCodeAt(i);
                 }
-            } catch (error) {
-                console.error("Failed to process URL import:", error);
-                showNotification('Paylaşım linki geçersiz veya bozuk.', 'error');
-            } finally {
-                window.history.replaceState(null, '', window.location.pathname + window.location.search);
+                importedDataString = pako.inflate(compressed, { to: 'string' });
+            } else if (type === 'jsonblob' && url) { // Old JSONBlob format
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Paylaşılan veri kaynağı (${url}) getirilemedi.`);
+                }
+                const jsonData = await response.json();
+                importedDataString = JSON.stringify(jsonData);
+            } else if (data) { // Legacy base64 format
+                importedDataString = decodeURIComponent(escape(atob(data)));
             }
-        };
 
+            if (module && importedDataString) {
+                const validModules: View[] = ['hadith', 'fiqh', 'risale', 'namaz'];
+                
+                if (validModules.includes(module as View)) {
+                    sessionStorage.setItem(`importedDataFor_${module}`, importedDataString);
+                    navigateTo(module as View);
+                    showNotification('Paylaşılan içerik başarıyla yüklendi!', 'success');
+                } else {
+                    throw new Error('Geçersiz modül');
+                }
+            }
+        } catch (error) {
+            console.error("Paylaşım linki işlenemedi:", error);
+            showNotification('Paylaşım linki geçersiz veya bozuk.', 'error');
+        } finally {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+    };
+
+    useEffect(() => {
         handleUrlImport();
     }, []);
 
@@ -302,7 +327,7 @@ const App: React.FC = () => {
                                         <li><strong>Otomatik Konum Tespiti:</strong> Uygulama ilk açıldığında, tarayıcınızdan konum izni isteyecektir. İzin verdiğiniz takdirde, bulunduğunuz yere en uygun namaz vakitleri otomatik olarak yüklenir.</li>
                                         <li><strong>Manuel Arama:</strong> İzin vermediyseniz veya farklı bir konum aramak isterseniz, "Şehir" ve "Ülke" bilgilerini girerek istediğiniz yerin vakitlerini arayabilirsiniz.</li>
                                         <li><strong>Geri Sayım & Tarih:</strong> Bir sonraki namaz vaktine kalan süreyi canlı olarak gösterir ve Miladi, Rumi, Hicri takvimlere göre güncel tarihi belirtir.</li>
-                                        <li><strong>Geçmiş ve Paylaşım:</strong> Yaptığınız aramalar, `Geçmiş` paneline otomatik olarak kaydedilir. Buradan önceki bir konumu tek tıkla tekrar yükleyebilir, silebilir veya `Paylaş` ikonuyla özel bir link oluşturabilirsiniz. Bu linki bir arkadaşınıza gönderdiğinizde, linke tıklayan kişi doğrudan o konumun namaz vakitlerini görür.</li>
+                                        <li><strong>Geçmiş ve Paylaşım:</strong> Yaptığınız aramalar, `Geçmiş` paneline otomatik olarak kaydedilir. Buradan önceki bir konumu tek tıkla tekrar yükleyebilir, silebilir veya `Paylaş` ikonuyla kısa bir paylaşım linki oluşturabilirsiniz. Bu linki bir arkadaşınıza gönderdiğinizde, linke tıklayan kişi doğrudan o konumun namaz vakitlerini görür.</li>
                                     </ul>
                                 </section>
                                 <section>
@@ -337,7 +362,7 @@ const App: React.FC = () => {
                                 <section>
                                     <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Ortak Özellikler</h3>
                                     <ul className="list-disc list-inside space-y-2">
-                                        <li><strong>Geçmiş ve Paylaşım:</strong> Tüm araştırma modüllerinde `Geçmiş` paneli bulunur. Önceki aramalarınızı yeniden adlandırabilir, silebilir veya `Paylaş` ikonuyla özel bir link oluşturabilirsiniz. Bu linki bir arkadaşınıza gönderdiğinizde, linke tıklayan kişi doğrudan sizin gördüğünüz cevabı kendi ekranında görür ve bu arama kendi geçmişine de eklenir.</li>
+                                        <li><strong>Geçmiş ve Paylaşım:</strong> Tüm araştırma modüllerinde `Geçmiş` paneli bulunur. Önceki aramalarınızı yeniden adlandırabilir, silebilir veya `Paylaş` ikonuyla kısa bir paylaşım linki oluşturabilirsiniz. Bu linki bir arkadaşınıza gönderdiğinizde, linke tıklayan kişi doğrudan sizin gördüğünüz cevabı kendi ekranında görür ve bu arama kendi geçmişine de eklenir.</li>
                                         <li><strong>Yedekle & Geri Yükle:</strong> Anasayfadaki bu özellik ile tüm uygulama verilerinizi (geçmişler, ayarlar, kıraat ilerlemesi) tek bir koda dönüştürüp yedekleyebilirsiniz. Bu kodu kullanarak verilerinizi başka bir cihaza kolayca aktarabilirsiniz. <strong className="text-red-500">Uyarı:</strong> Geri yükleme, mevcut verilerin üzerine yazar.</li>
                                         <li><strong>Lügat (Sözlük) Aracı:</strong> Ekranın bir köşesinde sürekli duran, üzerinde kitap ikonu olan bir baloncuk göreceksiniz. Bu balonu basılı tutarak ekranın istediğiniz yerine sürükleyebilir ve balona tıklayarak açılan pencereye anlamını merak ettiğiniz kelimeyi yazıp aratabilirsiniz.</li>
                                         <li><strong>Tema Seçimi:</strong> Anasayfadaki Ay/Güneş ikonuyla açık ve koyu tema arasında geçiş yapabilirsiniz.</li>
