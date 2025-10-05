@@ -53,6 +53,7 @@ const LugatBubble: React.FC = () => {
     const [position, setPosition] = useState({ x: 20, y: window.innerHeight - 80 });
     const isDragging = useRef(false);
     const dragStartPos = useRef({ x: 0, y: 0 });
+    const initialPointerPos = useRef({ x: 0, y: 0 });
     const hasMoved = useRef(false);
 
     useEffect(() => {
@@ -69,21 +70,30 @@ const LugatBubble: React.FC = () => {
     const handlePointerDown = (e: React.PointerEvent) => {
         isDragging.current = true;
         hasMoved.current = false;
+        initialPointerPos.current = { x: e.clientX, y: e.clientY };
         dragStartPos.current = { x: e.clientX - position.x, y: e.clientY - position.y };
         (e.target as HTMLElement).setPointerCapture(e.pointerId);
     };
 
     const handlePointerMove = (e: React.PointerEvent) => {
         if (!isDragging.current) return;
-        hasMoved.current = true;
-        let newX = e.clientX - dragStartPos.current.x;
-        let newY = e.clientY - dragStartPos.current.y;
         
-        // Clamp position within viewport
-        newX = Math.max(10, Math.min(newX, window.innerWidth - 60));
-        newY = Math.max(10, Math.min(newY, window.innerHeight - 60));
+        const dx = e.clientX - initialPointerPos.current.x;
+        const dy = e.clientY - initialPointerPos.current.y;
+        if (!hasMoved.current && (Math.abs(dx) > 5 || Math.abs(dy) > 5)) {
+            hasMoved.current = true;
+        }
 
-        setPosition({ x: newX, y: newY });
+        if (hasMoved.current) {
+            let newX = e.clientX - dragStartPos.current.x;
+            let newY = e.clientY - dragStartPos.current.y;
+            
+            // Clamp position within viewport
+            newX = Math.max(10, Math.min(newX, window.innerWidth - 60));
+            newY = Math.max(10, Math.min(newY, window.innerHeight - 60));
+
+            setPosition({ x: newX, y: newY });
+        }
     };
 
     const handlePointerUp = (e: React.PointerEvent) => {
@@ -96,7 +106,11 @@ const LugatBubble: React.FC = () => {
     
     return (
         <button
-            style={{ top: position.y, left: position.x }}
+            style={{ 
+                top: position.y, 
+                left: position.x,
+                touchAction: 'none'
+            }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
