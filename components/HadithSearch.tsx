@@ -1,8 +1,10 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import * as pako from 'pako';
 import type { AIHadithResponse, HadithResult, SourceInfo, ImamCommentary, FiqhSourceInfo } from '../types';
 import Spinner from './Spinner';
+import { HighlightableText } from './Lugat';
 
 // --- ICONS ---
 const HomeIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>);
@@ -136,7 +138,9 @@ const ImamCommentaryModal: React.FC<{
                 <div className="p-6 overflow-y-auto">
                     <div className="mb-6 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg border-l-4 border-amber-500">
                         <p dir="rtl" className="font-amiri text-lg text-right leading-relaxed text-gray-800 dark:text-gray-200">{data.hadith.arabicText}</p>
-                        <p className="text-gray-600 dark:text-gray-400 mt-2 italic">"{data.hadith.turkishText}"</p>
+                        <p className="text-gray-600 dark:text-gray-400 mt-2 italic">
+                            "<HighlightableText>{data.hadith.turkishText}</HighlightableText>"
+                        </p>
                     </div>
                     {isFetching ? (
                         <Spinner />
@@ -147,7 +151,9 @@ const ImamCommentaryModal: React.FC<{
                             {data.commentaries.map((item, index) => (
                                 <div key={index} className="p-4 border rounded-lg dark:border-gray-700 space-y-3">
                                     <h3 className="font-bold text-lg text-teal-600 dark:text-teal-400">{item.imamName}</h3>
-                                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{item.commentary}</p>
+                                    <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                        <HighlightableText>{item.commentary}</HighlightableText>
+                                    </p>
                                     <div className="text-right pt-2 border-t dark:border-gray-600">
                                          <button 
                                             onClick={(e) => { e.stopPropagation(); onViewFiqhSource(item.source); }}
@@ -599,7 +605,7 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                                                     {hadith.narrator}
                                                 </p>
                                                 <p className="text-gray-600 dark:text-gray-400 leading-relaxed italic">
-                                                    "{hadith.turkishText}"
+                                                    "<HighlightableText>{hadith.turkishText}</HighlightableText>"
                                                 </p>
                                                 <div className="text-right mt-2 flex justify-end items-center space-x-2">
                                                     <button
