@@ -226,11 +226,11 @@ const App: React.FC = () => {
                             <p className="text-gray-600 dark:text-gray-300">Kur'an'ı Kerim'i farklı kârilerle okuyun, dinleyin ve mealini inceleyin.</p>
                         </button>
                         <button onClick={() => navigateTo('hadith')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
-                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Hadis Ara</h2>
+                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Yapay Zeka ile Hadis Ara</h2>
                             <p className="text-gray-600 dark:text-gray-300">İlgilendiğiniz konulardaki hadisleri yapay zeka yardımıyla bulun ve fıkhi analizlerini inceleyin.</p>
                         </button>
                         <button onClick={() => navigateTo('recitation')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
-                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Kıraat ve Tecvid Asistanı (Beta)</h2>
+                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Kıraat Asistanı (Tecvid)</h2>
                             <p className="text-gray-600 dark:text-gray-300">Ayetleri okuyun ve yapay zeka ile telaffuz ve tecvid hatalarınızı tespit edin.</p>
                         </button>
                         <button onClick={() => navigateTo('fiqh')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
@@ -364,7 +364,9 @@ const App: React.FC = () => {
                                     <ul className="list-disc list-inside space-y-2">
                                         <li><strong>Geçmiş ve Paylaşım:</strong> Tüm araştırma modüllerinde `Geçmiş` paneli bulunur. Önceki aramalarınızı yeniden adlandırabilir, silebilir veya `Paylaş` ikonuyla kısa bir paylaşım linki oluşturabilirsiniz. Bu linki bir arkadaşınıza gönderdiğinizde, linke tıklayan kişi doğrudan sizin gördüğünüz cevabı kendi ekranında görür ve bu arama kendi geçmişine de eklenir.</li>
                                         <li><strong>Yedekle & Geri Yükle:</strong> Anasayfadaki bu özellik ile tüm uygulama verilerinizi (geçmişler, ayarlar, kıraat ilerlemesi) tek bir koda dönüştürüp yedekleyebilirsiniz. Bu kodu kullanarak verilerinizi başka bir cihaza kolayca aktarabilirsiniz. <strong className="text-red-500">Uyarı:</strong> Geri yükleme, mevcut verilerin üzerine yazar.</li>
-                                        <li><strong>Lügat (Sözlük) Aracı:</strong> Ekranın bir köşesinde sürekli duran, üzerinde kitap ikonu olan bir baloncuk göreceksiniz. Bu balonu basılı tutarak ekranın istediğiniz yerine sürükleyebilir ve balona tıklayarak açılan pencereye anlamını merak ettiğiniz kelimeyi yazıp aratabilirsiniz.</li>
+                                        <li>
+                                            <strong>Lügat (Sözlük) Aracı:</strong> Ekranın bir köşesinde sürekli duran, üzerinde kitap ikonu olan bir baloncuk göreceksiniz. Bu balonu basılı tutarak ekranın istediğiniz yerine sürükleyebilir ve balona tıklayarak açılan pencereye anlamını merak ettiğiniz kelimeyi yazıp aratabilirsiniz. <strong className="text-amber-600 dark:text-amber-400">Yeni:</strong> Lügat'ta aradığınız kelimeler artık otomatik olarak kaydedilir. Uygulamanın diğer bölümlerinde (Meal, Hadis, Fıkıh, Risale metinleri) bu kelimelere denk geldiğinizde, kelimelerin altı noktalı bir çizgiyle işaretlenir. Farenizi bu kelimenin üzerine getirdiğinizde, lügat anlamı anında küçük bir pencerede belirir, böylece okuma akışınız bozulmaz.
+                                        </li>
                                         <li><strong>Tema Seçimi:</strong> Anasayfadaki Ay/Güneş ikonuyla açık ve koyu tema arasında geçiş yapabilirsiniz.</li>
                                     </ul>
                                 </section>
