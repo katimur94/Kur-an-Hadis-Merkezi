@@ -10,7 +10,8 @@ const HistoryIcon: React.FC<{ className?: string }> = ({ className }) => (<svg x
 const TrashIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.134-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.067-2.09 1.02-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>);
 const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>);
 const ShareIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.186 2.25 2.25 0 0 0-3.933 2.186Z" /></svg>);
-const MiniSpinner: React.FC = () => (<div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>);
+const LocationMarkerIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" /></svg>);
+const MiniSpinner: React.FC = () => (<div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>);
 
 // --- TYPES & CONSTANTS ---
 interface PrayerTimes { [key: string]: string }
@@ -49,11 +50,12 @@ const NamazVakitleri: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const [history, setHistory] = useState<LocationInfo[]>([]);
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const [sharingIndex, setSharingIndex] = useState<number | null>(null);
+    const [isGeolocating, setIsGeolocating] = useState(false);
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
-        setTimeout(() => setNotification(null), 3000);
+        setTimeout(() => setNotification(null), 4000);
     };
     
     const updateHistory = (newLocation: LocationInfo) => {
@@ -74,29 +76,112 @@ const NamazVakitleri: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
         setLoading(true);
         setError(null);
         try {
-            const response = await axios.get(`https://api.aladhan.com/v1/timingsByCity`, {
-                params: { city, country, method: 3 } // Diyanet
+            // Step 1: Geocode the city and country to get accurate coordinates
+            const geoResponse = await axios.get(`https://nominatim.openstreetmap.org/search`, {
+                params: {
+                    q: `${city}, ${country}`,
+                    format: 'json',
+                    limit: 1,
+                    'accept-language': 'tr'
+                }
             });
+
+            if (!geoResponse.data || geoResponse.data.length === 0) {
+                throw new Error("Konum bulunamadı.");
+            }
+            
+            const { lat, lon } = geoResponse.data[0];
+
+            // Step 2: Fetch prayer times using the obtained coordinates
+            const response = await axios.get(`https://api.aladhan.com/v1/timings`, {
+                params: { latitude: lat, longitude: lon, method: 3 } // Diyanet
+            });
+
             if (response.data.code === 200) {
                 const responseData = response.data.data;
                 setTimes(responseData.timings);
                 setDate(responseData.date);
                 setFormattedDate(formatDate(responseData.date.gregorian.date));
                 
-                const displayCity = responseData.meta.timezone.split('/')[1]?.replace(/_/g, ' ') || city;
-                const currentLocation = { city: displayCity, country };
+                const currentLocation = { city, country }; // Use the original user input for consistency
                 setLocation(currentLocation);
                 setInputLocation(currentLocation);
                 localStorage.setItem('namazVakitleriLocation', JSON.stringify(currentLocation));
                 updateHistory(currentLocation);
             } else {
-                setError("Konum bulunamadı. Lütfen şehir ve ülke adını kontrol edin.");
+                 throw new Error("Namaz vakitleri alınamadı.");
             }
         } catch (err) {
-            setError("Namaz vakitleri alınırken bir hata oluştu.");
+            if (err instanceof Error && err.message === "Konum bulunamadı.") {
+                 setError("Konum bulunamadı. Lütfen şehir ve ülke adını daha spesifik girerek deneyin (örn: 'Kreuzberg' yerine 'Berlin').");
+            } else {
+                setError("Namaz vakitleri alınırken bir hata oluştu. İnternet bağlantınızı kontrol edin.");
+            }
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleGeolocate = () => {
+        if (!navigator.geolocation) {
+            showNotification("Tarayıcınız konum servisini desteklemiyor.", "error");
+            return;
+        }
+
+        setIsGeolocating(true);
+        showNotification("Konumunuz tespit ediliyor...", "success");
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const { latitude, longitude } = position.coords;
+                setLoading(true);
+                setError(null);
+                try {
+                    // Get city/country for display
+                    const geoResponse = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=tr`);
+                    const address = geoResponse.data.address;
+                    const city = address.city || address.town || address.village || address.state;
+                    const country = address.country;
+
+                    if (!city || !country) throw new Error("Reverse geocoding failed");
+
+                    // Get prayer times with coordinates
+                    const timesResponse = await axios.get(`https://api.aladhan.com/v1/timings`, {
+                        params: { latitude, longitude, method: 3 }
+                    });
+                    
+                    if (timesResponse.data.code === 200) {
+                        const responseData = timesResponse.data.data;
+                        setTimes(responseData.timings);
+                        setDate(responseData.date);
+                        setFormattedDate(formatDate(responseData.date.gregorian.date));
+                        
+                        const currentLocation = { city, country };
+                        setLocation(currentLocation);
+                        setInputLocation(currentLocation);
+                        localStorage.setItem('namazVakitleriLocation', JSON.stringify(currentLocation));
+                        updateHistory(currentLocation);
+                    } else {
+                        throw new Error("Namaz vakitleri alınamadı.");
+                    }
+                } catch (e) {
+                    showNotification("Konum bilgisi alınamadı, varsayılan olarak İstanbul gösteriliyor.", "error");
+                    await fetchPrayerTimes('Istanbul', 'Turkey');
+                } finally {
+                    setIsGeolocating(false);
+                    setLoading(false);
+                }
+            },
+            async (error) => {
+                if (error.code === error.PERMISSION_DENIED) {
+                    showNotification("Konum izni verilmedi, varsayılan olarak İstanbul gösteriliyor.", "error");
+                } else {
+                    showNotification("Konumunuz tespit edilemedi, varsayılan olarak İstanbul gösteriliyor.", "error");
+                }
+                await fetchPrayerTimes('Istanbul', 'Turkey');
+                setIsGeolocating(false);
+            }
+        );
     };
     
     // History & URL Import Load/Save Effects
@@ -128,20 +213,7 @@ const NamazVakitleri: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
             const loc = JSON.parse(savedLocation);
             fetchPrayerTimes(loc.city, loc.country);
         } else {
-            navigator.geolocation.getCurrentPosition(async (position) => {
-                try {
-                    const geoResponse = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`);
-                    const city = geoResponse.data.address.city || geoResponse.data.address.town || geoResponse.data.address.village;
-                    const country = geoResponse.data.address.country;
-                    if (city && country) {
-                        fetchPrayerTimes(city, country);
-                    } else { throw new Error("Geolocation failed to find city/country"); }
-                } catch (e) {
-                     fetchPrayerTimes('Istanbul', 'Turkey');
-                }
-            }, () => {
-                 fetchPrayerTimes('Istanbul', 'Turkey');
-            });
+            handleGeolocate();
         }
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -309,6 +381,15 @@ const NamazVakitleri: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                         <input type="text" value={inputLocation.city} onChange={e => setInputLocation(prev => ({ ...prev, city: e.target.value }))} placeholder="Şehir" className="flex-1 p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-teal-500 focus:border-teal-500" />
                         <input type="text" value={inputLocation.country} onChange={e => setInputLocation(prev => ({ ...prev, country: e.target.value }))} placeholder="Ülke" className="flex-1 p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-teal-500 focus:border-teal-500" />
                         <button type="submit" className="p-2.5 bg-teal-600 text-white rounded-md hover:bg-teal-700 flex-shrink-0"><SearchIcon className="w-5 h-5"/></button>
+                        <button 
+                            type="button" 
+                            onClick={handleGeolocate} 
+                            disabled={isGeolocating}
+                            className="p-2.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex-shrink-0 flex items-center justify-center disabled:bg-blue-400"
+                            title="Konumumu Kullan"
+                        >
+                            {isGeolocating ? <MiniSpinner /> : <LocationMarkerIcon className="w-5 h-5"/>}
+                        </button>
                     </form>
                     
                     {loading ? <Spinner /> : error ? <p className="text-center text-red-500 bg-red-100 dark:bg-red-900/50 p-4 rounded-lg">{error}</p> : times && date && (
