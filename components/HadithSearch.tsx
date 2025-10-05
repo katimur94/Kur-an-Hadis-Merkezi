@@ -181,7 +181,6 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
     const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
     const [editingTitle, setEditingTitle] = useState('');
-    const [importCode, setImportCode] = useState('');
     const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     
     // State for modals
@@ -194,7 +193,7 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const lastQueryRef = useRef<string>('');
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
     const model = 'gemini-2.5-flash';
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
@@ -202,23 +201,49 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
         setTimeout(() => setNotification(null), 3000);
     };
 
+    const handleHistoryItemClick = useCallback((item: HistoryItem) => {
+        lastQueryRef.current = item.question;
+        setActiveHistoryId(item.id);
+
+        const reconstructedMessages: Message[] = [{ role: 'user', content: item.question }];
+        item.responses.forEach(response => {
+            reconstructedMessages.push({ role: 'model', content: response });
+        });
+        
+        setMessages(reconstructedMessages);
+        setShowMore(item.responses[item.responses.length - 1]?.hasMore || false);
+        setIsHistoryOpen(false);
+    }, []);
+
     useEffect(() => {
         if (chatContainerRef.current) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
     }, [messages]);
     
-    // History Load/Save Effects
+    // History & URL Import Load/Save Effects
     useEffect(() => {
         try {
             const storedHistory = localStorage.getItem('hadithSearchHistory');
             if (storedHistory) {
                 setHistory(JSON.parse(storedHistory));
             }
+
+            const importedDataString = sessionStorage.getItem('importedDataFor_hadith');
+            if (importedDataString) {
+                sessionStorage.removeItem('importedDataFor_hadith');
+                const importedItem: HistoryItem = JSON.parse(importedDataString);
+                setHistory(prev => {
+                    if (prev.some(item => item.id === importedItem.id)) return prev;
+                    return [importedItem, ...prev];
+                });
+                handleHistoryItemClick(importedItem);
+            }
         } catch (e) {
-            console.error("Failed to load history", e);
+            console.error("Failed to load or import history", e);
+            showNotification('Geçmiş verisi işlenemedi.', 'error');
         }
-    }, []);
+    }, [handleHistoryItemClick]);
 
     useEffect(() => {
         try {
@@ -331,20 +356,6 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
         const morePrompt = `${lastQueryRef.current} (lütfen devamını getir)`;
         await getAIResponse(morePrompt, true, activeHistoryId);
     };
-
-    const handleHistoryItemClick = (item: HistoryItem) => {
-        lastQueryRef.current = item.question;
-        setActiveHistoryId(item.id);
-
-        const reconstructedMessages: Message[] = [{ role: 'user', content: item.question }];
-        item.responses.forEach(response => {
-            reconstructedMessages.push({ role: 'model', content: response });
-        });
-        
-        setMessages(reconstructedMessages);
-        setShowMore(item.responses[item.responses.length - 1]?.hasMore || false);
-        setIsHistoryOpen(false);
-    };
     
     const handleClearHistory = () => {
         setHistory([]);
@@ -385,36 +396,13 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
         try {
             const jsonString = JSON.stringify(item);
             const encodedString = btoa(unescape(encodeURIComponent(jsonString)));
-            navigator.clipboard.writeText(encodedString);
-            showNotification('Paylaşım kodu panoya kopyalandı!');
+            const url = `${window.location.origin}${window.location.pathname}#/?module=hadith&data=${encodedString}`;
+            navigator.clipboard.writeText(url);
+            showNotification('Paylaşım linki panoya kopyalandı!');
         } catch (err) {
-            showNotification('Kod oluşturulurken bir hata oluştu.', 'error');
+            showNotification('Link oluşturulurken bir hata oluştu.', 'error');
         }
     };
-    
-    const handleImportHistory = () => {
-        if (!importCode.trim()) return;
-        try {
-            const decodedString = decodeURIComponent(escape(atob(importCode)));
-            const importedItem = JSON.parse(decodedString);
-
-            if (!importedItem.question || !Array.isArray(importedItem.responses)) {
-                throw new Error('Invalid code format');
-            }
-
-            const newHistoryItem: HistoryItem = {
-                ...importedItem,
-                id: Date.now().toString(),
-            };
-            
-            setHistory(prev => [newHistoryItem, ...prev.filter(item => item.id !== newHistoryItem.id)]);
-            setImportCode('');
-            showNotification('Geçmiş başarıyla içe aktarıldı!');
-        } catch (err) {
-            showNotification('Geçersiz veya bozuk kod.', 'error');
-        }
-    };
-
 
     const handleHadithClick = async (hadith: HadithResult) => {
         setCommentaryModalData({ hadith, commentaries: [] });
@@ -536,19 +524,7 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                         <p>Henüz arama geçmişiniz yok.</p>
                     </div>
                 )}
-                <div className="p-3 border-t dark:border-gray-700 space-y-2">
-                    <div className="flex items-center space-x-2">
-                         <input
-                            type="text"
-                            value={importCode}
-                            onChange={(e) => setImportCode(e.target.value)}
-                            placeholder="Paylaşım kodunu yapıştırın..."
-                            className="flex-1 p-2 border border-gray-300 rounded-md text-sm dark:bg-gray-700 dark:border-gray-600 focus:ring-1 focus:ring-teal-500 focus:outline-none"
-                        />
-                        <button onClick={handleImportHistory} className="p-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 disabled:bg-teal-400" disabled={!importCode.trim()}>
-                            <ImportIcon className="w-5 h-5"/>
-                        </button>
-                    </div>
+                <div className="p-3 border-t dark:border-gray-700">
                     {history.length > 0 && (
                          <button onClick={handleClearHistory} className="w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-red-600 text-white shadow-sm hover:bg-red-700">
                             <TrashIcon className="w-4 h-4" />
