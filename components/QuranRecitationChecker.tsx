@@ -16,6 +16,7 @@ interface SpeechRecognition extends EventTarget {
   onerror: (event: SpeechRecognitionErrorEvent) => void;
   start: () => void;
   stop: () => void;
+  abort: () => void;
 }
 interface SpeechRecognitionEvent extends Event {
   readonly resultIndex: number;
@@ -159,9 +160,134 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
     // Refs
     const recognitionRef = useRef<SpeechRecognition | null>(null);
     const wordRefs = useRef<Record<number, HTMLSpanElement | null>>({});
-    const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
+    const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string })); 
+    // NEU HINZUGEFÜGT FÜR HYBRID-ANSATZ
+    const cumulativeTranscriptRef = useRef<string>(''); 
+    const silenceTimerRef = useRef<number | null>(null); 
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const mediaStreamRef = useRef<MediaStream | null>(null);
+    const analyserRef = useRef<AnalyserNode | null>(null);
+    const animationFrameRef = useRef<number | null>(null);
+    const SILENCE_DURATION = 2500; // 2.5 Sekunden Stille, um die Aufnahme zu beenden
 
-    // --- Effects ---
+    // --- Audio Monitoring Logic ---
+    const stopAudioMonitoring = useCallback(() => {
+        if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = null;
+        }
+        if (silenceTimerRef.current !== null) {
+            window.clearTimeout(silenceTimerRef.current);
+            silenceTimerRef.current = null;
+        }
+        if (mediaStreamRef.current) {
+            mediaStreamRef.current.getTracks().forEach(track => track.stop());
+            mediaStreamRef.current = null;
+        }
+        // AudioContext schließen, um Ressourcen freizugeben
+        if (audioContextRef.current) {
+            audioContextRef.current.close();
+            audioContextRef.current = null;
+        }
+    }, []);
+
+    const handleFinalizeRecitation = useCallback((finalTranscript: string) => {
+        // Sicherstellen, dass das Monitoring gestoppt wird, bevor Finalisierung
+        stopAudioMonitoring(); 
+
+        setLiveWordStatuses(prevLive => {
+            const newCorrectWords: WordStatusCollection = { ...sessionWordStatuses };
+            let madeChanges = false;
+            
+            for (const [indexStr, value] of Object.entries(prevLive)) {
+                 if ((value as LiveWordStatus).status === 'correct') {
+                    newCorrectWords[Number(indexStr)] = 'correct';
+                    madeChanges = true;
+                }
+            }
+
+            if (madeChanges) {
+                setSessionWordStatuses(newCorrectWords);
+                localStorage.setItem(`recitationWords_p${currentPage}`, JSON.stringify(newCorrectWords));
+
+                const lastWordIndex = pageWords.length - 1;
+                if (lastWordIndex >= 0 && newCorrectWords[lastWordIndex]) {
+                    setPageProgress(prevProg => ({ ...prevProg, [currentPage]: 'completed' }));
+                }
+            }
+            return {}; // Live-Statusse zurücksetzen
+        });
+        
+        cumulativeTranscriptRef.current = ''; 
+        setRecitationStatus('recorded');
+    }, [currentPage, pageWords, sessionWordStatuses, setPageProgress, setSessionWordStatuses, stopAudioMonitoring]);
+
+    const checkAudioLevel = useCallback(() => {
+        if (!analyserRef.current) return;
+
+        const bufferLength = analyserRef.current.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        analyserRef.current.getByteFrequencyData(dataArray);
+
+        // Durchschnittliche Lautstärke berechnen
+        let sum = 0;
+        for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+        }
+        const average = sum / bufferLength;
+
+        // Lautstärkeschwelle (anpassen, falls nötig)
+        const SILENCE_THRESHOLD = 20; 
+
+        if (average < SILENCE_THRESHOLD) {
+            // Stille erkannt: Timer starten/fortsetzen
+            if (silenceTimerRef.current === null) {
+                silenceTimerRef.current = window.setTimeout(() => {
+                    // 2.5 Sekunden Stille erreicht -> Aufnahme beenden
+                    if (recognitionRef.current) {
+                        // Manuelle Beendigung triggert onend, das handleFinalizeRecitation aufruft
+                        recognitionRef.current.abort(); 
+                    } else {
+                        handleFinalizeRecitation(cumulativeTranscriptRef.current);
+                    }
+                }, SILENCE_DURATION);
+            }
+        } else {
+            // Ton erkannt: Timer zurücksetzen
+            if (silenceTimerRef.current !== null) {
+                window.clearTimeout(silenceTimerRef.current);
+                silenceTimerRef.current = null;
+            }
+        }
+
+        animationFrameRef.current = requestAnimationFrame(checkAudioLevel);
+    }, [handleFinalizeRecitation]);
+
+    const startAudioMonitoring = useCallback(async (onSuccess: (stream: MediaStream) => void) => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaStreamRef.current = stream;
+            
+            audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+            
+            const source = audioContextRef.current.createMediaStreamSource(stream);
+            analyserRef.current = audioContextRef.current.createAnalyser();
+            
+            // Analyser-Einstellungen
+            analyserRef.current.fftSize = 256;
+            
+            source.connect(analyserRef.current);
+
+            onSuccess(stream); // Callback, um SpeechRecognition zu starten
+            animationFrameRef.current = requestAnimationFrame(checkAudioLevel);
+        } catch (err) {
+            console.error("Audio monitoring error:", err);
+            setError("Mikrofonzugriff verweigert oder fehlgeschlagen. Bitte Berechtigungen prüfen.");
+            setRecitationStatus('idle');
+        }
+    }, [checkAudioLevel]);
+    
+    // handleReset function
     const handleReset = useCallback(() => {
         setError(null);
         setLiveTranscript('');
@@ -177,26 +303,27 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
             delete newProgress[currentPage];
             return newProgress;
         });
-    }, [currentPage]);
+        stopAudioMonitoring(); // Audio-Monitoring stoppen
+    }, [currentPage, setPageProgress, stopAudioMonitoring]);
+
 
     useEffect(() => {
         getSurahList().then(setSurahList).catch(() => setError("Sure listesi yüklenemedi."));
-    }, []);
+        // Beim Unmount des Komponenten alles stoppen
+        return () => stopAudioMonitoring(); 
+    }, [stopAudioMonitoring]);
 
     useEffect(() => {
         setIsLoadingPage(true);
         setError(null);
-
-        // FIX: Manually reset component's transient state to prevent UI "bleeding" from the previous page,
-        // WITHOUT deleting the new page's data from localStorage before it can be loaded.
         setLiveTranscript('');
         setLiveWordStatuses({});
         setAnalysisResults([]);
         setCorrectionPopup(null);
         setRecitationStatus('idle');
-        setSessionWordStatuses({}); // Clear in-memory words from the previous page.
+        setSessionWordStatuses({}); 
+        cumulativeTranscriptRef.current = ''; 
         
-        // Now, safely load the persistent state for the NEW currentPage from localStorage.
         try {
             const savedAnalysis = localStorage.getItem(`recitationAnalysis_p${currentPage}`);
             const savedWords = localStorage.getItem(`recitationWords_p${currentPage}`);
@@ -226,7 +353,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         localStorage.setItem('recitationFontFamily', fontFamily);
     }, [fontSize, fontFamily]);
 
-    // Live tracking effect
+    // Live tracking effect (angezeigt wird kumulierter Text + neues Segment)
     useEffect(() => {
         if (recitationStatus !== 'recording' || !pageWords.length) return;
 
@@ -263,94 +390,111 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         setLiveWordStatuses(newStatuses);
     }, [liveTranscript, recitationStatus, pageWords, sessionWordStatuses]);
 
-    // --- Recitation & Navigation ---
+    // --- Recitation & Navigation (handleReciteClick function with new hybrid logic) ---
     const handleReciteClick = () => {
         if (recitationStatus === 'recording') {
-            recognitionRef.current?.stop();
+             // Manueller Stopp
+            recognitionRef.current?.abort(); // Abort löst onend aus, was die Finalisierung triggert
+            stopAudioMonitoring(); 
         } else {
             setLiveTranscript('');
             setLiveWordStatuses({});
-            setAnalysisResults([]); // Clear old analysis on new recording
+            setAnalysisResults([]);
             localStorage.removeItem(`recitationAnalysis_p${currentPage}`);
+            cumulativeTranscriptRef.current = ''; 
             
             setRecitationStatus('recording');
             setPageProgress(prev => ({...prev, [currentPage]: prev[currentPage] === 'completed' ? 'completed' : 'in_progress' }));
 
             const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognitionAPI) {
-              setError("Tarayıcınız konuşma tanımayı desteklemiyor.");
+              setError("Ihr Browser unterstützt keine Spracherkennung.");
               return;
             }
-            recognitionRef.current = new SpeechRecognitionAPI();
-            recognitionRef.current.continuous = true;
-            recognitionRef.current.interimResults = true;
-            recognitionRef.current.lang = 'ar-SA';
-            recognitionRef.current.onresult = (event) => {
-                let fullTranscript = '';
-                // FIX: Type 'SpeechRecognitionResultList' must have a '[Symbol.iterator]()' method that returns an iterator. Use a standard for-loop.
-                for (let i = 0; i < event.results.length; i++) {
-                   const result = event.results[i];
-                   fullTranscript += result[0].transcript;
-                }
-                setLiveTranscript(fullTranscript);
-            };
-            recognitionRef.current.onstart = () => setRecitationStatus('recording');
-            recognitionRef.current.onend = () => {
-                setRecitationStatus('recorded');
+            
+            // Starte Audio Monitoring und dann SpeechRecognition im Callback
+            startAudioMonitoring(() => {
+                recognitionRef.current = new SpeechRecognitionAPI();
+                // recognitionRef.current.continuous = true; // WIRD DURCH HYBRIDEN ANSATZ ERSETZT!
+                recognitionRef.current.interimResults = true;
+                recognitionRef.current.lang = 'ar-SA';
                 
-                // Finalize and save progress
-                setLiveWordStatuses(prevLive => {
-                    const newCorrectWords: WordStatusCollection = { ...sessionWordStatuses };
-                    let madeChanges = false;
-                    // FIX: Use Object.entries for a type-safe loop instead of for...in.
-                    for (const [indexStr, value] of Object.entries(prevLive)) {
-                        // FIX: Explicitly cast value to LiveWordStatus to prevent potential type errors where 'status' is accessed on an 'unknown' type.
-                        if ((value as LiveWordStatus).status === 'correct') {
-                            newCorrectWords[Number(indexStr)] = 'correct';
-                            madeChanges = true;
-                        }
+                recognitionRef.current.onresult = (event) => {
+                    // 1. Timer zurücksetzen, da gesprochen wird
+                    if (silenceTimerRef.current !== null) {
+                        window.clearTimeout(silenceTimerRef.current);
+                        silenceTimerRef.current = null;
                     }
 
-                    if (madeChanges) {
-                        setSessionWordStatuses(newCorrectWords);
-                        localStorage.setItem(`recitationWords_p${currentPage}`, JSON.stringify(newCorrectWords));
-
-                        // Check for completion
-                        const lastWordIndex = pageWords.length - 1;
-                        if (lastWordIndex >= 0 && newCorrectWords[lastWordIndex]) {
-                            setPageProgress(prevProg => ({ ...prevProg, [currentPage]: 'completed' }));
-                        }
+                    let currentFullTranscript = '';
+                    for (let i = 0; i < event.results.length; i++) {
+                        const result = event.results[i];
+                        currentFullTranscript += result[0].transcript;
                     }
-                    return prevLive;
-                });
-            };
-            recognitionRef.current.onerror = (event) => {
-                console.error("Speech recognition error", event.error);
-                if (event.error !== 'no-speech') {
-                  setError("Mikrofon hatası: " + event.error);
+                    setLiveTranscript(cumulativeTranscriptRef.current + currentFullTranscript);
+                };
+                
+                recognitionRef.current.onstart = () => {
+                    // Starte die Erkennung erst, wenn beide Komponenten bereit sind
+                    setRecitationStatus('recording');
+                };
+                
+                recognitionRef.current.onend = () => {
+                    // 2. Transkript zur Kumulation hinzufügen
+                    const newSegment = liveTranscript.substring(cumulativeTranscriptRef.current.length);
+                    cumulativeTranscriptRef.current += ' ' + newSegment;
+                    setLiveTranscript(cumulativeTranscriptRef.current.trim());
+                    
+                    // Prüfen, ob der Stopp durch den Nutzer (abort/handleFinalize) oder Android kam
+                    if (recitationStatus === 'recording' && !silenceTimerRef.current) {
+                        // Automatisch gestoppt (durch Androids eigene Stille-Erkennung)
+                        // Starte sofort neu, um die Lücke zu schließen.
+                        setTimeout(() => {
+                            try {
+                                recognitionRef.current?.start();
+                            } catch (e) {
+                                console.error("Neustart fehlgeschlagen:", e);
+                                handleFinalizeRecitation(cumulativeTranscriptRef.current); // Bei Fehler finalisieren
+                            }
+                        }, 100); 
+                    } else if (recitationStatus === 'recording' && silenceTimerRef.current) {
+                         // Stopp kam durch den SilenceTimer (oder manuell abort wurde von AudioContext getriggert)
+                        handleFinalizeRecitation(cumulativeTranscriptRef.current);
+                    }
+                    // Wenn der Status nicht 'recording' ist, wurde bereits manuell Finalisierung getriggert.
+                };
+                
+                recognitionRef.current.onerror = (event) => {
+                    console.error("Spracherkennungsfehler", event.error);
+                    if (event.error !== 'no-speech' && event.error !== 'aborted') {
+                        setError("Mikrofonfehler: " + event.error);
+                    }
+                    // Bei Fehler Finalisierung triggern
+                    handleFinalizeRecitation(cumulativeTranscriptRef.current);
+                    setRecitationStatus('idle');
                 }
-                setRecitationStatus('idle');
-            }
-            recognitionRef.current.start();
+                recognitionRef.current.start();
+            });
         }
     };
     
+    // handleAnalyze function (unchanged)
     const handleAnalyze = async () => {
         const fullRecitedText = pageWords.filter((_, idx) => sessionWordStatuses[idx]).join(' ');
         if (!fullRecitedText.trim() || !pageWords.length) {
-            setError("Analiz edilecek bir okuma bulunamadı.");
+            setError("Es wurde keine Lesung zur Analyse gefunden.");
             return;
         }
         setRecitationStatus('analyzing');
         setError(null);
         setCorrectionPopup(null);
 
-        const prompt = `Sen bir Tecvid ve Kur'an kıraat uzmanısın. Kullanıcının okuduğu bir sayfanın dökümünü ve orijinal metnini vereceğim. Görevin, bu ikisini karşılaştırıp sadece önemli telaffuz ve tecvid hatalarını tespit etmektir. Küçük aksan farklılıklarını göz ardı et. Sadece belirgin harf hatalarını veya uygulanmamış tecvid kurallarını (med, idgam, ihfa, izhar, kalkale vb.) listele.
+        const prompt = `Du bist ein Experte für Tajwid und die Koranrezitation. Ich gebe dir die Abschrift einer gelesenen Seite und den Originaltext. Deine Aufgabe ist es, diese beiden zu vergleichen und nur die wichtigen Aussprache- und Tajwid-Fehler zu identifizieren. Ignoriere geringfügige Akzentunterschiede. Liste nur deutliche Buchstabenfehler oder nicht angewendete Tajwid-Regeln auf (Medd, Idgham, Ikhfa, Izhar, Qalqalah, etc.).
         
-        Orijinal Sayfa Metni: "${pageWords.join(' ')}"
-        Kullanıcının Okuma Dökümü: "${fullRecitedText}"
+        Originaltext der Seite: "${pageWords.join(' ')}"
+        Abschrift der Nutzerlesung: "${fullRecitedText}"
         
-        Bulduğun her hata için, aşağıdaki bilgileri içeren bir JSON nesnesi oluştur ve bu nesneleri bir dizi içinde döndür. Hata yoksa boş bir dizi döndür.`;
+        Erstelle für jeden gefundenen Fehler ein JSON-Objekt mit den folgenden Informationen und gib diese Objekte in einem Array zurück. Gib ein leeres Array zurück, wenn keine Fehler gefunden wurden.`;
 
         try {
             const response = await ai.current.models.generateContent({
@@ -363,11 +507,11 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                         items: {
                             type: Type.OBJECT,
                             properties: {
-                                wordIndex: { type: Type.INTEGER, description: "Hatalı kelimenin orijinal metindeki sıfır tabanlı indeksi." },
-                                word: { type: Type.STRING, description: "Hatanın yapıldığı orijinal kelime." },
-                                errorType: { type: Type.STRING, description: "Hatanın türü, kısa bir başlık (ör. 'Tecvid Hatası: İdgam')." },
-                                explanation: { type: Type.STRING, description: "Hatanın ne olduğu ve nasıl düzeltileceğinin sade, anlaşılır bir açıklaması." },
-                                ruleInfo: { type: Type.STRING, description: "İlgili tecvid kuralının ne olduğu hakkında kısa bilgi." },
+                                wordIndex: { type: Type.INTEGER, description: "Der nullbasierte Index des fehlerhaften Wortes im Originaltext." },
+                                word: { type: Type.STRING, description: "Das Originalwort, bei dem der Fehler gemacht wurde." },
+                                errorType: { type: Type.STRING, description: "Die Art des Fehlers, eine kurze Überschrift (z.B. 'Tajwid-Fehler: Idgham')." },
+                                explanation: { type: Type.STRING, description: "Eine einfache, verständliche Erklärung, was der Fehler ist und wie er korrigiert werden kann." },
+                                ruleInfo: { type: Type.STRING, description: "Kurze Informationen über die relevante Tajwid-Regel." },
                             }
                         }
                     }
@@ -380,14 +524,16 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
 
         } catch (err) {
             console.error("AI analysis error:", err);
-            setError("Hata analizi sırasında bir sorun oluştu. Lütfen tekrar deneyin.");
+            setError("Ein Problem trat während der Fehleranalyse auf. Bitte versuche es erneut.");
             setRecitationStatus('recorded');
         }
     };
 
     const jumpToPage = (page: number) => {
         if (page >= 1 && page <= TOTAL_PAGES) {
-            recognitionRef.current?.stop();
+            // Beim Seitenwechsel alles stoppen
+            recognitionRef.current?.abort();
+            stopAudioMonitoring(); 
             setCurrentPage(page);
         }
          if (window.innerWidth < 1024) setSidebarOpen(false);
@@ -415,11 +561,12 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
 
     const getStatusMessage = () => {
         switch (recitationStatus) {
-            case 'recording': return "Dinleniyor... Bitince tekrar basın.";
-            case 'recorded': return "Okuma tamamlandı. Analiz etmek için butona basın.";
-            case 'analyzing': return "Analiz ediliyor...";
-            case 'analyzed': return `Analiz tamamlandı. ${analysisResults.length} hata bulundu.`;
-            default: return "Okumaya başlamak için mikrofona basın.";
+            case 'recording': 
+                return "Höre zu... (Pause von 2.5s beendet die Aufnahme)";
+            case 'recorded': return "Lesung abgeschlossen. Tippe auf 'Analysieren'.";
+            case 'analyzing': return "Analysiere...";
+            case 'analyzed': return `Analyse abgeschlossen. ${analysisResults.length} Fehler gefunden.`;
+            default: return "Tippe auf das Mikrofon, um mit der Lesung zu beginnen.";
         }
     };
 
@@ -475,7 +622,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
              <aside className={`absolute lg:relative z-20 flex flex-col h-full bg-white dark:bg-gray-800 shadow-lg transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`} style={{width: '300px'}}>
                 <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center">
-                    <h2 className="font-bold text-lg">Sureler</h2>
+                    <h2 className="font-bold text-lg">Suren</h2>
                     <button onClick={() => setSidebarOpen(false)} className="lg:hidden p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"><CloseIcon/></button>
                 </div>
                 <ul className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -514,8 +661,8 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                 <header className="flex-shrink-0 bg-white dark:bg-gray-800 shadow-md p-2 flex justify-between items-center z-10">
                      <div className="flex items-center space-x-2">
                         <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"><MenuIcon/></button>
-                        <button onClick={handleReset} title="Sıfırla" className="p-2 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-md"><ResetIcon className="w-5 h-5"/></button>
-                        <button onClick={handleAnalyze} title="Analiz Et" className="p-2 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-md disabled:opacity-50" disabled={recitationStatus !== 'recorded' && recitationStatus !== 'analyzed'}><AnalyzeIcon className="w-5 h-5"/></button>
+                        <button onClick={handleReset} title="Zurücksetzen" className="p-2 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-md"><ResetIcon className="w-5 h-5"/></button>
+                        <button onClick={handleAnalyze} title="Analysieren" className="p-2 text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded-md disabled:opacity-50" disabled={recitationStatus !== 'recorded' && recitationStatus !== 'analyzed'}><AnalyzeIcon className="w-5 h-5"/></button>
                     </div>
                      <div className="text-center text-sm text-gray-500 dark:text-gray-400">
                          {getStatusMessage()}
@@ -531,7 +678,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                     <div className="p-4 md:p-8 flex items-center justify-center">
                         <div className="w-full max-w-4xl bg-[#FDFCF8] dark:bg-[#2a2a2a] text-gray-900 dark:text-gray-100 shadow-lg rounded-lg p-6 border-4 border-double border-amber-400 dark:border-amber-600">
                            <div className="flex justify-between items-center text-xs text-gray-500 dark:text-gray-400 mb-4 px-2">
-                               <span>Cüz {pageData[0]?.juz}</span>
+                               <span>Dschuz {pageData[0]?.juz}</span>
                                <span>{pageData[0]?.surah.name}</span>
                            </div>
                            <div dir="rtl" className="text-center" style={{ fontFamily: fontFamily, fontSize: `${fontSize}px`, lineHeight: 2.5 }}>
@@ -544,13 +691,13 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                 </main>
 
                 <footer className="flex-shrink-0 bg-white dark:bg-gray-800 shadow-inner p-2 flex justify-between items-center">
-                    <button onClick={() => jumpToPage(currentPage - 1)} disabled={currentPage === 1 || recitationStatus === 'recording'} className="px-4 py-2 rounded-md disabled:opacity-50 flex items-center space-x-2 hover:bg-gray-100 dark:hover:bg-gray-700"><ChevronLeftIcon className="w-5 h-5"/> <span>Önceki</span></button>
+                    <button onClick={() => jumpToPage(currentPage - 1)} disabled={currentPage === 1 || recitationStatus === 'recording'} className="px-4 py-2 rounded-md disabled:opacity-50 flex items-center space-x-2 hover:bg-gray-100 dark:hover:bg-gray-700"><ChevronLeftIcon className="w-5 h-5"/> <span>Vorherige</span></button>
                     <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-20">
                          <button onClick={handleReciteClick} disabled={isLoadingPage || recitationStatus === 'analyzing'} className={`flex items-center justify-center w-20 h-20 rounded-full text-white transition-all duration-300 ease-in-out focus:outline-none focus:ring-4 focus:ring-opacity-50 disabled:bg-gray-500 disabled:cursor-not-allowed ${recitationStatus === 'recording' ? 'bg-red-600 hover:bg-red-700 focus:ring-red-400 shadow-lg animate-pulse' : 'bg-teal-600 hover:bg-teal-700 focus:ring-teal-400 shadow-lg'}`} aria-label={recitationStatus === 'recording' ? 'Stop Reciting' : 'Start Reciting'}>
                             {recitationStatus === 'recording' ? <StopCircleIcon className="w-8 h-8"/> : <MicIcon className="w-8 h-8"/>}
                         </button>
                     </div>
-                    <button onClick={() => jumpToPage(currentPage + 1)} disabled={currentPage === TOTAL_PAGES || recitationStatus === 'recording'} className="px-4 py-2 rounded-md disabled:opacity-50 flex items-center space-x-2 hover:bg-gray-100 dark:hover:bg-gray-700"><span>Sonraki</span> <ChevronRightIcon className="w-5 h-5"/></button>
+                    <button onClick={() => jumpToPage(currentPage + 1)} disabled={currentPage === TOTAL_PAGES || recitationStatus === 'recording'} className="px-4 py-2 rounded-md disabled:opacity-50 flex items-center space-x-2 hover:bg-gray-100 dark:hover:bg-gray-700"><span>Nächste</span> <ChevronRightIcon className="w-5 h-5"/></button>
                 </footer>
              </div>
             
@@ -561,18 +708,18 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                  <div className="fixed inset-0 bg-black/60 z-30 flex items-center justify-center" onClick={() => setSettingsOpen(false)}>
                     <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-6">
-                             <h3 className="text-xl font-bold">Ayarlar</h3>
+                             <h3 className="text-xl font-bold">Einstellungen</h3>
                              <button onClick={() => setSettingsOpen(false)} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"><CloseIcon/></button>
                         </div>
                         <div className="space-y-6">
                              <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Yazı Tipi (Arapça)</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Schriftart (Arabisch)</label>
                                 <select value={fontFamily} onChange={e => setFontFamily(e.target.value)} className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:border-gray-600 focus:ring-teal-500 focus:border-teal-500">
                                     {FONT_LIST.map(font => <option key={font.name} value={font.value} style={{ fontFamily: font.value }}>{font.name}</option>)}
                                 </select>
                             </div>
                              <div>
-                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Yazı Tipi Boyutu</label>
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Schriftgröße</label>
                                 <div className="flex items-center space-x-4">
                                      <input type="range" min="16" max="48" step="2" value={fontSize} onChange={e => setFontSize(parseInt(e.target.value))} className="w-full"/>
                                      <span className="font-bold">{fontSize}px</span>
@@ -598,25 +745,25 @@ const CorrectionPopup: React.FC<{ data: CorrectionPopupData; onClose: () => void
     return (
       <div style={popupStyle} className="w-80 bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-4 border border-gray-200 dark:border-gray-700 animate-scale-in" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
-          <h4 className="text-lg font-bold text-gray-800 dark:text-gray-200">Hata Detayı</h4>
+          <h4 className="text-lg font-bold text-gray-800 dark:text-gray-200">Fehlerdetails</h4>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" aria-label="Close popup"><CloseIcon className="w-5 h-5" /></button>
         </div>
         <div className="space-y-3 text-sm">
             <div className="pb-2">
-                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Hatalı Kelime</h5>
+                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Fehlerhaftes Wort</h5>
                 <p dir="rtl" className="font-amiri text-2xl text-right p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-gray-900 dark:text-gray-100">{data.analysis.word}</p>
             </div>
              <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Hata Türü</h5>
-                <p className="text-gray-800 dark:text-gray-200 font-semibold">{data.analysis.errorType || "Belirtilmemiş"}</p>
+                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Fehlertyp</h5>
+                <p className="text-gray-800 dark:text-gray-200 font-semibold">{data.analysis.errorType || "Nicht angegeben"}</p>
             </div>
             <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Açıklama</h5>
-                <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{data.analysis.explanation || "Detaylı açıklama bulunamadı."}</p>
+                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Erklärung</h5>
+                <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{data.analysis.explanation || "Detaillierte Erklärung nicht gefunden."}</p>
             </div>
             <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Tecvid Kuralı</h5>
-                <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{data.analysis.ruleInfo || "İlgili kural bilgisi bulunamadı."}</p>
+                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Tajwid-Regel</h5>
+                <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{data.analysis.ruleInfo || "Zugehörige Regelinformation nicht gefunden."}</p>
             </div>
         </div>
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-b-8 border-b-white dark:border-b-gray-800" style={{filter: 'drop-shadow(0 -1px 1px rgb(0 0 0 / 0.05))'}}></div>
@@ -626,12 +773,12 @@ const CorrectionPopup: React.FC<{ data: CorrectionPopupData; onClose: () => void
 
 const PageProgressIndicator: React.FC<{ status?: PageStatus }> = ({ status }) => {
     if (status === 'completed') {
-        return <span title="Tamamlandı" className="w-2.5 h-2.5 text-teal-500">✔</span>;
+        return <span title="Abgeschlossen" className="w-2.5 h-2.5 text-teal-500">✔</span>;
     }
     if (status === 'in_progress') {
-        return <span title="Devam Ediyor" className="w-2.5 h-2.5 text-yellow-500">▶</span>;
+        return <span title="Im Gange" className="w-2.5 h-2.5 text-yellow-500">▶</span>;
     }
-    return <span title="Başlanmadı" className="w-2.5 h-2.5 text-gray-400 dark:text-gray-500">○</span>;
+    return <span title="Nicht begonnen" className="w-2.5 h-2.5 text-gray-400 dark:text-gray-500">○</span>;
 };
 
 
@@ -660,12 +807,12 @@ const SurahProgressIndicator: React.FC<{ surahNumber: number; pageProgress: Reco
     }
     
     if (status === 'completed') {
-        return <span title="Tamamlandı" className="w-3 h-3 bg-teal-500 rounded-full"></span>;
+        return <span title="Abgeschlossen" className="w-3 h-3 bg-teal-500 rounded-full"></span>;
     }
     if (status === 'in_progress') {
-         return <span title="Devam Ediyor" className="w-3 h-3 bg-yellow-500 rounded-full"></span>;
+         return <span title="Im Gange" className="w-3 h-3 bg-yellow-500 rounded-full"></span>;
     }
-    return <span title="Başlanmadı" className="w-3 h-3 border-2 border-gray-400 dark:border-gray-600 rounded-full"></span>;
+    return <span title="Nicht begonnen" className="w-3 h-3 border-2 border-gray-400 dark:border-gray-600 rounded-full"></span>;
 };
 
 export default QuranRecitationChecker;
