@@ -282,7 +282,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
               return;
             }
             recognitionRef.current = new SpeechRecognitionAPI();
-            recognitionRef.current.continuous = true;
+          //  recognitionRef.current.continuous = true;
             recognitionRef.current.interimResults = true;
             recognitionRef.current.lang = 'ar-SA';
             recognitionRef.current.onresult = (event) => {
