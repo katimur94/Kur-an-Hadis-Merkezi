@@ -16,6 +16,7 @@ interface SpeechRecognition extends EventTarget {
   onerror: (event: SpeechRecognitionErrorEvent) => void;
   start: () => void;
   stop: () => void;
+  abort: () => void;
 }
 interface SpeechRecognitionEvent extends Event {
   readonly resultIndex: number;
@@ -159,9 +160,45 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
     // Refs
     const recognitionRef = useRef<SpeechRecognition | null>(null);
     const wordRefs = useRef<Record<number, HTMLSpanElement | null>>({});
-    const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
+    const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string })); 
+    // NEU HINZUGEFÜGT FÜR 5-SEKUNDEN WORKAROUND
+    const cumulativeTranscriptRef = useRef<string>(''); 
+    const stopTimerRef = useRef<number | null>(null); 
 
     // --- Effects ---
+    // NEUE FUNKTION handleFinalizeRecitation
+    const handleFinalizeRecitation = useCallback((finalTranscript: string) => {
+        // 1. Live-Word-Statusse in den dauerhaften Zustand überführen
+        setLiveWordStatuses(prevLive => {
+            const newCorrectWords: WordStatusCollection = { ...sessionWordStatuses };
+            let madeChanges = false;
+            
+            for (const [indexStr, value] of Object.entries(prevLive)) {
+                 if ((value as LiveWordStatus).status === 'correct') {
+                    newCorrectWords[Number(indexStr)] = 'correct';
+                    madeChanges = true;
+                }
+            }
+
+            if (madeChanges) {
+                setSessionWordStatuses(newCorrectWords);
+                localStorage.setItem(`recitationWords_p${currentPage}`, JSON.stringify(newCorrectWords));
+
+                // Check for completion
+                const lastWordIndex = pageWords.length - 1;
+                if (lastWordIndex >= 0 && newCorrectWords[lastWordIndex]) {
+                    setPageProgress(prevProg => ({ ...prevProg, [currentPage]: 'completed' }));
+                }
+            }
+            return {}; // LiveWordStatuses leeren
+        });
+        
+        // 2. Die kumulierte Ref zurücksetzen für die nächste Aufnahme
+        cumulativeTranscriptRef.current = ''; 
+        
+    }, [currentPage, pageWords, sessionWordStatuses, setPageProgress, setSessionWordStatuses]);
+
+    // handleReset function implementation (slightly modified)
     const handleReset = useCallback(() => {
         setError(null);
         setLiveTranscript('');
@@ -177,7 +214,13 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
             delete newProgress[currentPage];
             return newProgress;
         });
-    }, [currentPage]);
+        // Sicherstellen, dass der Timer gelöscht wird
+        if (stopTimerRef.current !== null) {
+            window.clearTimeout(stopTimerRef.current);
+            stopTimerRef.current = null;
+        }
+    }, [currentPage, setPageProgress]);
+
 
     useEffect(() => {
         getSurahList().then(setSurahList).catch(() => setError("Sure listesi yüklenemedi."));
@@ -187,16 +230,16 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         setIsLoadingPage(true);
         setError(null);
 
-        // FIX: Manually reset component's transient state to prevent UI "bleeding" from the previous page,
-        // WITHOUT deleting the new page's data from localStorage before it can be loaded.
+        // Transient state reset
         setLiveTranscript('');
         setLiveWordStatuses({});
         setAnalysisResults([]);
         setCorrectionPopup(null);
         setRecitationStatus('idle');
-        setSessionWordStatuses({}); // Clear in-memory words from the previous page.
+        setSessionWordStatuses({});
+        cumulativeTranscriptRef.current = ''; // Reset cumulative text on page change
         
-        // Now, safely load the persistent state for the NEW currentPage from localStorage.
+        // Load persistent state
         try {
             const savedAnalysis = localStorage.getItem(`recitationAnalysis_p${currentPage}`);
             const savedWords = localStorage.getItem(`recitationWords_p${currentPage}`);
@@ -226,7 +269,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         localStorage.setItem('recitationFontFamily', fontFamily);
     }, [fontSize, fontFamily]);
 
-    // Live tracking effect
+    // Live tracking effect (unchanged)
     useEffect(() => {
         if (recitationStatus !== 'recording' || !pageWords.length) return;
 
@@ -263,15 +306,21 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         setLiveWordStatuses(newStatuses);
     }, [liveTranscript, recitationStatus, pageWords, sessionWordStatuses]);
 
-    // --- Recitation & Navigation ---
+    // --- Recitation & Navigation (handleReciteClick function with new logic) ---
     const handleReciteClick = () => {
         if (recitationStatus === 'recording') {
-            recognitionRef.current?.stop();
+             // Bei manuellem Stopp den Timer löschen
+            if (stopTimerRef.current !== null) {
+                window.clearTimeout(stopTimerRef.current);
+                stopTimerRef.current = null;
+            }
+            recognitionRef.current?.abort(); // Nutze abort für saubereren Stopp
         } else {
             setLiveTranscript('');
             setLiveWordStatuses({});
             setAnalysisResults([]); // Clear old analysis on new recording
             localStorage.removeItem(`recitationAnalysis_p${currentPage}`);
+            cumulativeTranscriptRef.current = ''; // Reset kumulatives Transkript
             
             setRecitationStatus('recording');
             setPageProgress(prev => ({...prev, [currentPage]: prev[currentPage] === 'completed' ? 'completed' : 'in_progress' }));
@@ -282,52 +331,74 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
               return;
             }
             recognitionRef.current = new SpeechRecognitionAPI();
-          //  recognitionRef.current.continuous = true;
+            // recognitionRef.current.continuous = true; // BLEIBT AUSKOMMENTIERT!
             recognitionRef.current.interimResults = true;
             recognitionRef.current.lang = 'ar-SA';
+            
+            // NEUE LOGIK FÜR onresult und onend
             recognitionRef.current.onresult = (event) => {
-                let fullTranscript = '';
-                // FIX: Type 'SpeechRecognitionResultList' must have a '[Symbol.iterator]()' method that returns an iterator. Use a standard for-loop.
-                for (let i = 0; i < event.results.length; i++) {
-                   const result = event.results[i];
-                   fullTranscript += result[0].transcript;
+                // 1. Timer bei jedem Sprechen zurücksetzen
+                if (stopTimerRef.current !== null) {
+                    window.clearTimeout(stopTimerRef.current);
+                    stopTimerRef.current = null;
                 }
-                setLiveTranscript(fullTranscript);
-            };
-            recognitionRef.current.onstart = () => setRecitationStatus('recording');
-            recognitionRef.current.onend = () => {
-                setRecitationStatus('recorded');
                 
-                // Finalize and save progress
-                setLiveWordStatuses(prevLive => {
-                    const newCorrectWords: WordStatusCollection = { ...sessionWordStatuses };
-                    let madeChanges = false;
-                    // FIX: Use Object.entries for a type-safe loop instead of for...in.
-                    for (const [indexStr, value] of Object.entries(prevLive)) {
-                        // FIX: Explicitly cast value to LiveWordStatus to prevent potential type errors where 'status' is accessed on an 'unknown' type.
-                        if ((value as LiveWordStatus).status === 'correct') {
-                            newCorrectWords[Number(indexStr)] = 'correct';
-                            madeChanges = true;
-                        }
-                    }
-
-                    if (madeChanges) {
-                        setSessionWordStatuses(newCorrectWords);
-                        localStorage.setItem(`recitationWords_p${currentPage}`, JSON.stringify(newCorrectWords));
-
-                        // Check for completion
-                        const lastWordIndex = pageWords.length - 1;
-                        if (lastWordIndex >= 0 && newCorrectWords[lastWordIndex]) {
-                            setPageProgress(prevProg => ({ ...prevProg, [currentPage]: 'completed' }));
-                        }
-                    }
-                    return prevLive;
-                });
+                let currentFullTranscript = '';
+                // Transkript zusammenfassen
+                for (let i = 0; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    currentFullTranscript += result[0].transcript;
+                }
+                
+                // Transkript mit kumuliertem Text anzeigen
+                setLiveTranscript(cumulativeTranscriptRef.current + currentFullTranscript);
             };
+            
+            recognitionRef.current.onstart = () => setRecitationStatus('recording');
+            
+            recognitionRef.current.onend = () => {
+                // 2. Transkript zur Kumulation hinzufügen und UI aktualisieren
+                // Wir speichern nur das neue Segment, das seit dem letzten onend erkannt wurde.
+                const newSegment = liveTranscript.substring(cumulativeTranscriptRef.current.length);
+                cumulativeTranscriptRef.current += ' ' + newSegment; // Füge Leerzeichen hinzu
+                setLiveTranscript(cumulativeTranscriptRef.current.trim());
+                
+                // 3. Prüfen, ob der Nutzer manuell gestoppt hat
+                const manuallyStopped = recitationStatus !== 'recording';
+
+                if (manuallyStopped) {
+                    // Wenn manuell gestoppt, führe die Finalisierung aus
+                    setRecitationStatus('recorded');
+                    handleFinalizeRecitation(cumulativeTranscriptRef.current);
+                    return;
+                }
+                
+                // 4. Wenn Android gestoppt hat: Starte den 5-Sekunden-Timer
+                stopTimerRef.current = window.setTimeout(() => {
+                    // DIESER CODE WIRD NACH 5 SEKUNDEN STILLE AUSGELÖST!
+                    setRecitationStatus('recorded');
+                    handleFinalizeRecitation(cumulativeTranscriptRef.current);
+                }, 5000); // 5000 ms = 5 Sekunden warten
+                
+                // 5. Unmittelbar die Erkennung neu starten (Lücken vermeiden)
+                setTimeout(() => {
+                    try {
+                        recognitionRef.current?.start();
+                    } catch (e) {
+                        console.error("Failed to restart recognition:", e);
+                        setRecitationStatus('idle');
+                    }
+                }, 100); 
+            };
+            
             recognitionRef.current.onerror = (event) => {
                 console.error("Speech recognition error", event.error);
                 if (event.error !== 'no-speech') {
-                  setError("Mikrofon hatası: " + event.error);
+                    setError("Mikrofon hatası: " + event.error);
+                }
+                // Bei einem echten Fehler stoppen wir den Prozess vollständig und löschen den Timer
+                if (stopTimerRef.current !== null) {
+                    window.clearTimeout(stopTimerRef.current);
                 }
                 setRecitationStatus('idle');
             }
@@ -335,6 +406,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         }
     };
     
+    // handleAnalyze function (unchanged)
     const handleAnalyze = async () => {
         const fullRecitedText = pageWords.filter((_, idx) => sessionWordStatuses[idx]).join(' ');
         if (!fullRecitedText.trim() || !pageWords.length) {
@@ -345,12 +417,12 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         setError(null);
         setCorrectionPopup(null);
 
-        const prompt = `Sen bir Tecvid ve Kur'an kıraat uzmanısın. Kullanıcının okuduğu bir sayfanın dökümünü ve orijinal metnini vereceğim. Görevin, bu ikisini karşılaştırıp sadece önemli telaffuz ve tecvid hatalarını tespit etmektir. Küçük aksan farklılıklarını göz ardı et. Sadece belirgin harf hatalarını veya uygulanmamış tecvid kurallarını (med, idgam, ihfa, izhar, kalkale vb.) listele.
+        const prompt = `Sen bir Tecvid ve Kur'an kıraat uzmanısın. Kullanıcının okuduğu bir sayfanın dökümünü und orijinal metnini vereceğim. Görevin, diese beiden zu vergleichen und nur wichtige Aussprache- und Tajweed-Fehler zu identifizieren. Kleine Akzentunterschiede ignorieren. Liste nur deutliche Buchstabenfehler oder nicht angewendete Tajweed-Regeln auf (med, idgam, ihfa, izhar, kalkale usw.).
         
         Orijinal Sayfa Metni: "${pageWords.join(' ')}"
         Kullanıcının Okuma Dökümü: "${fullRecitedText}"
         
-        Bulduğun her hata için, aşağıdaki bilgileri içeren bir JSON nesnesi oluştur ve bu nesneleri bir dizi içinde döndür. Hata yoksa boş bir dizi döndür.`;
+        Bulduğun her hata için, aşağıdaki bilgileri içeren ein JSON nesnesi oluştur und diese Objekte in einem Array zurückgeben. Gib ein leeres Array zurück, wenn keine Fehler gefunden wurden.`;
 
         try {
             const response = await ai.current.models.generateContent({
@@ -363,11 +435,11 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
                         items: {
                             type: Type.OBJECT,
                             properties: {
-                                wordIndex: { type: Type.INTEGER, description: "Hatalı kelimenin orijinal metindeki sıfır tabanlı indeksi." },
-                                word: { type: Type.STRING, description: "Hatanın yapıldığı orijinal kelime." },
-                                errorType: { type: Type.STRING, description: "Hatanın türü, kısa bir başlık (ör. 'Tecvid Hatası: İdgam')." },
-                                explanation: { type: Type.STRING, description: "Hatanın ne olduğu ve nasıl düzeltileceğinin sade, anlaşılır bir açıklaması." },
-                                ruleInfo: { type: Type.STRING, description: "İlgili tecvid kuralının ne olduğu hakkında kısa bilgi." },
+                                wordIndex: { type: Type.INTEGER, description: "Der nullbasierte Index des fehlerhaften Wortes im Originaltext." },
+                                word: { type: Type.STRING, description: "Das Originalwort, bei dem der Fehler gemacht wurde." },
+                                errorType: { type: Type.STRING, description: "Die Art des Fehlers, eine kurze Überschrift (z.B. 'Tajweed-Fehler: Idgam')." },
+                                explanation: { type: Type.STRING, description: "Eine einfache, verständliche Erklärung, was der Fehler ist und wie er korrigiert werden kann." },
+                                ruleInfo: { type: Type.STRING, description: "Kurze Informationen über die relevante Tajweed-Regel." },
                             }
                         }
                     }
@@ -380,14 +452,18 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
 
         } catch (err) {
             console.error("AI analysis error:", err);
-            setError("Hata analizi sırasında bir sorun oluştu. Lütfen tekrar deneyin.");
+            setError("Ein Problem trat während der Fehleranalyse auf. Bitte versuche es erneut.");
             setRecitationStatus('recorded');
         }
     };
 
     const jumpToPage = (page: number) => {
         if (page >= 1 && page <= TOTAL_PAGES) {
-            recognitionRef.current?.stop();
+            // Timer und Aufnahme beim Seitenwechsel stoppen
+            if (stopTimerRef.current !== null) {
+                window.clearTimeout(stopTimerRef.current);
+            }
+            recognitionRef.current?.abort();
             setCurrentPage(page);
         }
          if (window.innerWidth < 1024) setSidebarOpen(false);
@@ -415,11 +491,15 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
 
     const getStatusMessage = () => {
         switch (recitationStatus) {
-            case 'recording': return "Dinleniyor... Bitince tekrar basın.";
-            case 'recorded': return "Okuma tamamlandı. Analiz etmek için butona basın.";
+            case 'recording': 
+                if (stopTimerRef.current !== null) {
+                    return "Höre zu... (Stille wird in 5 Sekunden beendet)";
+                }
+                return "Höre zu... Tippe erneut zum Beenden.";
+            case 'recorded': return "Okuma tamamlandı. Analiz etmek für den Knopf drücken.";
             case 'analyzing': return "Analiz ediliyor...";
             case 'analyzed': return `Analiz tamamlandı. ${analysisResults.length} hata bulundu.`;
-            default: return "Okumaya başlamak için mikrofona basın.";
+            default: return "Okumaya başlamak für den Mikronfon drücken.";
         }
     };
 
