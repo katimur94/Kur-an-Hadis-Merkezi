@@ -1,4 +1,3 @@
-// QuranRecitationChecker.tsx
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { getSurahList, getPageDetail, getSurahDetailForPageJump } from '../services/api';
@@ -63,7 +62,7 @@ interface CorrectionPopupData {
 type RecitationStatus = 'idle' | 'recording' | 'recorded' | 'analyzing' | 'analyzed';
 type PageStatus = 'in_progress' | 'completed';
 
-// --- ICONS (omitted for brevity in comments; same as your file) ---
+// --- ICONS ---
 const HomeIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>);
 const MicIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m12 0v-1.5a6 6 0 0 0-12 0v1.5m6 7.5a6 6 0 0 0 3-5.625M12 12.75a6 6 0 0 1-3-5.625" /><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 12a4.5 4.5 0 0 1 9 0v1.5a4.5 4.5 0 0 1-9 0V12Z" /></svg>);
 const StopCircleIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M9 9.563C9 9.252 9.252 9 9.563 9h4.874c.311 0 .563.252.563.563v4.874c0 .311-.252.563-.563.563H9.563A.562.562 0 0 1 9 14.437V9.564Z" /></svg>);
@@ -162,192 +161,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
     const wordRefs = useRef<Record<number, HTMLSpanElement | null>>({});
     const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
 
-    // WebAudio / VAD refs
-    const audioStreamRef = useRef<MediaStream | null>(null);
-    const audioCtxRef = useRef<AudioContext | null>(null);
-    const analyserRef = useRef<AnalyserNode | null>(null);
-    const dataArrayRef = useRef<Uint8Array | null>(null);
-    const rafRef = useRef<number | null>(null);
-    const recognitionStartedRef = useRef(false);
-    const lastSpeechTimestampRef = useRef<number>(0);
-    const wantRecordingRef = useRef(false); // whether user wants recording on (toggled by button)
-    const lastOnEndTimeRef = useRef<number>(0);
-
-    // VAD / audio params
-    const VOLUME_THRESHOLD = 0.02; // RMS threshold — tweak if needed
-    const SILENCE_MS = 700; // consider silence after this ms
-
-    // --- Effects & helpers for audio + recognition lifecycle ---
-    const createRecognition = useCallback((): SpeechRecognition | null => {
-        const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRecognitionAPI) return null;
-        const rec = new SpeechRecognitionAPI();
-        rec.continuous = false; // important for Android compatibility
-        rec.interimResults = true;
-        rec.lang = 'ar-SA';
-        rec.onresult = (event: SpeechRecognitionEvent) => {
-            let fullTranscript = '';
-            for (let i = 0; i < event.results.length; i++) {
-                const result = event.results[i];
-                fullTranscript += (result[0] && result[0].transcript) ? result[0].transcript + (result.isFinal ? ' ' : '') : '';
-            }
-            setLiveTranscript(prev => {
-                // merge incremental results for smoother UI (avoid chopping)
-                if (!prev) return fullTranscript;
-                // prefer longer continuous transcript
-                return fullTranscript.length > prev.length ? fullTranscript : prev;
-            });
-        };
-        rec.onstart = () => {
-            recognitionStartedRef.current = true;
-            // console.log('Recognition started');
-            setRecitationStatus('recording');
-        };
-        rec.onend = () => {
-            recognitionStartedRef.current = false;
-            lastOnEndTimeRef.current = Date.now();
-            // If the user still wants recording on, we don't immediately spin a tight restart loop.
-            // We'll rely on the VAD (audio monitor) to restart recognition when speech appears again.
-            // But in case speech is ongoing and VAD missed, attempt a safe restart with a small backoff.
-            if (wantRecordingRef.current) {
-                const timeSinceLastSpeech = Date.now() - lastSpeechTimestampRef.current;
-                // If recently heard speech, try quick restart (but prevent rapid loops)
-                if (timeSinceLastSpeech < 1500 && (Date.now() - lastOnEndTimeRef.current) > 200) {
-                    try {
-                        rec.start();
-                    } catch (e) {
-                        // ignore start errors
-                    }
-                } else {
-                    // otherwise wait for VAD to detect next speech
-                    setRecitationStatus('recording');
-                }
-            } else {
-                setRecitationStatus('recorded');
-            }
-        };
-        rec.onerror = (ev: any) => {
-            console.error('SpeechRecognition error', ev);
-            // show friendly error except for no-speech which can be noisy
-            if (ev?.error && ev.error !== 'no-speech') {
-                setError(`Mikrofon hatası: ${ev.error}`);
-            }
-            recognitionStartedRef.current = false;
-            setRecitationStatus('idle');
-        };
-        return rec;
-    }, []);
-
-    const startAudioMonitoring = useCallback(async () => {
-        // ensure we have permissions and stream
-        try {
-            if (!audioStreamRef.current) {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                audioStreamRef.current = stream;
-            }
-            if (!audioCtxRef.current) {
-                const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-                audioCtxRef.current = ctx;
-            }
-            if (!analyserRef.current) {
-                const analyser = audioCtxRef.current!.createAnalyser();
-                analyser.fftSize = 2048;
-                analyserRef.current = analyser;
-            }
-            const source = audioCtxRef.current!.createMediaStreamSource(audioStreamRef.current!);
-            source.connect(analyserRef.current!);
-            const bufferLength = analyserRef.current!.fftSize;
-            dataArrayRef.current = new Uint8Array(bufferLength);
-
-            // monitor loop
-            const monitor = () => {
-                try {
-                    analyserRef.current!.getByteTimeDomainData(dataArrayRef.current!);
-                    // compute RMS
-                    let sum = 0;
-                    for (let i = 0; i < dataArrayRef.current!.length; i++) {
-                        const v = (dataArrayRef.current![i] - 128) / 128;
-                        sum += v * v;
-                    }
-                    const rms = Math.sqrt(sum / dataArrayRef.current!.length);
-                    const now = Date.now();
-                    if (rms > VOLUME_THRESHOLD) {
-                        lastSpeechTimestampRef.current = now;
-                        // start recognition if not started
-                        if (wantRecordingRef.current && !recognitionStartedRef.current) {
-                            // create recognition if needed
-                            if (!recognitionRef.current) recognitionRef.current = createRecognition();
-                            try {
-                                recognitionRef.current?.start();
-                            } catch (err) {
-                                // Safari/Chrome may throw if start called too quickly; ignore
-                            }
-                        }
-                    } else {
-                        // silence: if silence lasted longer than SILENCE_MS, stop recognition to reduce partial results
-                        if (wantRecordingRef.current && recognitionStartedRef.current) {
-                            const silenceDuration = now - lastSpeechTimestampRef.current;
-                            if (silenceDuration > SILENCE_MS) {
-                                try {
-                                    recognitionRef.current?.stop();
-                                } catch (err) {
-                                    // ignore stop errors
-                                }
-                            }
-                        }
-                    }
-                } catch (err) {
-                    // ignore monitoring errors (could be closed context)
-                }
-                rafRef.current = requestAnimationFrame(monitor);
-            };
-            if (!rafRef.current) {
-                rafRef.current = requestAnimationFrame(monitor);
-            }
-        } catch (err: any) {
-            console.error('startAudioMonitoring error', err);
-            setError('Mikrofon erişimi reddedildi veya bulunamadı.');
-            // ensure flags
-            wantRecordingRef.current = false;
-            setRecitationStatus('idle');
-        }
-    }, [createRecognition]);
-
-    const stopAudioMonitoring = useCallback(() => {
-        if (rafRef.current) {
-            cancelAnimationFrame(rafRef.current);
-            rafRef.current = null;
-        }
-        try {
-            if (audioStreamRef.current) {
-                audioStreamRef.current.getTracks().forEach(t => t.stop());
-                audioStreamRef.current = null;
-            }
-            if (audioCtxRef.current) {
-                try { audioCtxRef.current.close(); } catch (e) {}
-                audioCtxRef.current = null;
-            }
-            analyserRef.current = null;
-            dataArrayRef.current = null;
-            lastSpeechTimestampRef.current = 0;
-        } catch (err) {
-            console.warn('stopAudioMonitoring cleanup error', err);
-        }
-    }, []);
-
-    useEffect(() => {
-        // cleanup on unmount
-        return () => {
-            wantRecordingRef.current = false;
-            try {
-                recognitionRef.current?.stop();
-            } catch (e) {}
-            recognitionRef.current = null;
-            stopAudioMonitoring();
-        };
-    }, [stopAudioMonitoring]);
-
-    // --- Effects (unchanged business logic) ---
+    // --- Effects ---
     const handleReset = useCallback(() => {
         setError(null);
         setLiveTranscript('');
@@ -373,13 +187,16 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         setIsLoadingPage(true);
         setError(null);
 
+        // FIX: Manually reset component's transient state to prevent UI "bleeding" from the previous page,
+        // WITHOUT deleting the new page's data from localStorage before it can be loaded.
         setLiveTranscript('');
         setLiveWordStatuses({});
         setAnalysisResults([]);
         setCorrectionPopup(null);
         setRecitationStatus('idle');
-        setSessionWordStatuses({});
-
+        setSessionWordStatuses({}); // Clear in-memory words from the previous page.
+        
+        // Now, safely load the persistent state for the NEW currentPage from localStorage.
         try {
             const savedAnalysis = localStorage.getItem(`recitationAnalysis_p${currentPage}`);
             const savedWords = localStorage.getItem(`recitationWords_p${currentPage}`);
@@ -403,12 +220,13 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         localStorage.setItem('recitationLastPage', String(currentPage));
     }, [currentPage]);
 
+    // Save settings
     useEffect(() => {
         localStorage.setItem('recitationFontSize', fontSize.toString());
         localStorage.setItem('recitationFontFamily', fontFamily);
     }, [fontSize, fontFamily]);
 
-    // Live tracking effect (unchanged)
+    // Live tracking effect
     useEffect(() => {
         if (recitationStatus !== 'recording' || !pageWords.length) return;
 
@@ -445,36 +263,78 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         setLiveWordStatuses(newStatuses);
     }, [liveTranscript, recitationStatus, pageWords, sessionWordStatuses]);
 
-    // --- Recitation & Navigation (updated to use VAD) ---
-    const handleReciteClick = async () => {
-        if (recitationStatus === 'recording' || wantRecordingRef.current) {
-            // stop everything
-            wantRecordingRef.current = false;
-            try {
-                recognitionRef.current?.stop();
-            } catch (e) {}
-            setRecitationStatus('recorded');
-            stopAudioMonitoring();
-            return;
+    // --- Recitation & Navigation ---
+    const handleReciteClick = () => {
+        if (recitationStatus === 'recording') {
+            recognitionRef.current?.stop();
+        } else {
+            setLiveTranscript('');
+            setLiveWordStatuses({});
+            setAnalysisResults([]); // Clear old analysis on new recording
+            localStorage.removeItem(`recitationAnalysis_p${currentPage}`);
+            
+            setRecitationStatus('recording');
+            setPageProgress(prev => ({...prev, [currentPage]: prev[currentPage] === 'completed' ? 'completed' : 'in_progress' }));
+
+            const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognitionAPI) {
+              setError("Tarayıcınız konuşma tanımayı desteklemiyor.");
+              return;
+            }
+            recognitionRef.current = new SpeechRecognitionAPI();
+            recognitionRef.current.continuous = true;
+            recognitionRef.current.interimResults = true;
+            recognitionRef.current.lang = 'ar-SA';
+            recognitionRef.current.onresult = (event) => {
+                let fullTranscript = '';
+                // FIX: Type 'SpeechRecognitionResultList' must have a '[Symbol.iterator]()' method that returns an iterator. Use a standard for-loop.
+                for (let i = 0; i < event.results.length; i++) {
+                   const result = event.results[i];
+                   fullTranscript += result[0].transcript;
+                }
+                setLiveTranscript(fullTranscript);
+            };
+            recognitionRef.current.onstart = () => setRecitationStatus('recording');
+            recognitionRef.current.onend = () => {
+                setRecitationStatus('recorded');
+                
+                // Finalize and save progress
+                setLiveWordStatuses(prevLive => {
+                    const newCorrectWords: WordStatusCollection = { ...sessionWordStatuses };
+                    let madeChanges = false;
+                    // FIX: Use Object.entries for a type-safe loop instead of for...in.
+                    for (const [indexStr, value] of Object.entries(prevLive)) {
+                        // FIX: Explicitly cast value to LiveWordStatus to prevent potential type errors where 'status' is accessed on an 'unknown' type.
+                        if ((value as LiveWordStatus).status === 'correct') {
+                            newCorrectWords[Number(indexStr)] = 'correct';
+                            madeChanges = true;
+                        }
+                    }
+
+                    if (madeChanges) {
+                        setSessionWordStatuses(newCorrectWords);
+                        localStorage.setItem(`recitationWords_p${currentPage}`, JSON.stringify(newCorrectWords));
+
+                        // Check for completion
+                        const lastWordIndex = pageWords.length - 1;
+                        if (lastWordIndex >= 0 && newCorrectWords[lastWordIndex]) {
+                            setPageProgress(prevProg => ({ ...prevProg, [currentPage]: 'completed' }));
+                        }
+                    }
+                    return prevLive;
+                });
+            };
+            recognitionRef.current.onerror = (event) => {
+                console.error("Speech recognition error", event.error);
+                if (event.error !== 'no-speech') {
+                  setError("Mikrofon hatası: " + event.error);
+                }
+                setRecitationStatus('idle');
+            }
+            recognitionRef.current.start();
         }
-
-        // start monitoring + recognition on voice
-        setLiveTranscript('');
-        setLiveWordStatuses({});
-        setAnalysisResults([]);
-        localStorage.removeItem(`recitationAnalysis_p${currentPage}`);
-        
-        setRecitationStatus('recording');
-        setPageProgress(prev => ({...prev, [currentPage]: prev[currentPage] === 'completed' ? 'completed' : 'in_progress' }));
-
-        // set flag then start audio monitoring
-        wantRecordingRef.current = true;
-        // create recognition instance but don't start it immediately; VAD will start it
-        if (!recognitionRef.current) recognitionRef.current = createRecognition();
-
-        await startAudioMonitoring();
     };
-
+    
     const handleAnalyze = async () => {
         const fullRecitedText = pageWords.filter((_, idx) => sessionWordStatuses[idx]).join(' ');
         if (!fullRecitedText.trim() || !pageWords.length) {
@@ -527,7 +387,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
 
     const jumpToPage = (page: number) => {
         if (page >= 1 && page <= TOTAL_PAGES) {
-            try { recognitionRef.current?.stop(); } catch (e) {}
+            recognitionRef.current?.stop();
             setCurrentPage(page);
         }
          if (window.innerWidth < 1024) setSidebarOpen(false);
@@ -563,7 +423,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         }
     };
 
-    // --- Render (kept your original UI, minimal changes) ---
+    // --- Render ---
     let wordCounter = -1;
     const analyzedErrorIndices = new Set(analysisResults.map(r => r.wordIndex));
     const combinedWordStatuses = { ...sessionWordStatuses, ...Object.fromEntries(Object.entries(liveWordStatuses).filter(([,v]) => (v as LiveWordStatus).status === 'correct').map(([k]) => [k, 'correct'])) };
@@ -738,25 +598,25 @@ const CorrectionPopup: React.FC<{ data: CorrectionPopupData; onClose: () => void
     return (
       <div style={popupStyle} className="w-80 bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-4 border border-gray-200 dark:border-gray-700 animate-scale-in" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
-          <h4 className="text-lg font-bold text-gray-800 dark:text-gray-200">Fehlerdetails</h4>
+          <h4 className="text-lg font-bold text-gray-800 dark:text-gray-200">Hata Detayı</h4>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200" aria-label="Close popup"><CloseIcon className="w-5 h-5" /></button>
         </div>
         <div className="space-y-3 text-sm">
             <div className="pb-2">
-                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Fehlerhaftes Wort</h5>
+                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Hatalı Kelime</h5>
                 <p dir="rtl" className="font-amiri text-2xl text-right p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-gray-900 dark:text-gray-100">{data.analysis.word}</p>
             </div>
              <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Fehlertyp</h5>
-                <p className="text-gray-800 dark:text-gray-200 font-semibold">{data.analysis.errorType || "Nicht angegeben"}</p>
+                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Hata Türü</h5>
+                <p className="text-gray-800 dark:text-gray-200 font-semibold">{data.analysis.errorType || "Belirtilmemiş"}</p>
             </div>
             <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Erklärung</h5>
-                <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{data.analysis.explanation || "Detaillierte Erklärung nicht gefunden."}</p>
+                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Açıklama</h5>
+                <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{data.analysis.explanation || "Detaylı açıklama bulunamadı."}</p>
             </div>
             <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
-                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Tajwid-Regel</h5>
-                <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{data.analysis.ruleInfo || "Zugehörige Regelinformation nicht gefunden."}</p>
+                <h5 className="font-semibold text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Tecvid Kuralı</h5>
+                <p className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{data.analysis.ruleInfo || "İlgili kural bilgisi bulunamadı."}</p>
             </div>
         </div>
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-b-8 border-b-white dark:border-b-gray-800" style={{filter: 'drop-shadow(0 -1px 1px rgb(0 0 0 / 0.05))'}}></div>
@@ -766,12 +626,12 @@ const CorrectionPopup: React.FC<{ data: CorrectionPopupData; onClose: () => void
 
 const PageProgressIndicator: React.FC<{ status?: PageStatus }> = ({ status }) => {
     if (status === 'completed') {
-        return <span title="Abgeschlossen" className="w-2.5 h-2.5 text-teal-500">✔</span>;
+        return <span title="Tamamlandı" className="w-2.5 h-2.5 text-teal-500">✔</span>;
     }
     if (status === 'in_progress') {
-        return <span title="Im Gange" className="w-2.5 h-2.5 text-yellow-500">▶</span>;
+        return <span title="Devam Ediyor" className="w-2.5 h-2.5 text-yellow-500">▶</span>;
     }
-    return <span title="Nicht begonnen" className="w-2.5 h-2.5 text-gray-400 dark:text-gray-500">○</span>;
+    return <span title="Başlanmadı" className="w-2.5 h-2.5 text-gray-400 dark:text-gray-500">○</span>;
 };
 
 
@@ -800,12 +660,12 @@ const SurahProgressIndicator: React.FC<{ surahNumber: number; pageProgress: Reco
     }
     
     if (status === 'completed') {
-        return <span title="Abgeschlossen" className="w-3 h-3 bg-teal-500 rounded-full"></span>;
+        return <span title="Tamamlandı" className="w-3 h-3 bg-teal-500 rounded-full"></span>;
     }
     if (status === 'in_progress') {
-         return <span title="Im Gange" className="w-3 h-3 bg-yellow-500 rounded-full"></span>;
+         return <span title="Devam Ediyor" className="w-3 h-3 bg-yellow-500 rounded-full"></span>;
     }
-    return <span title="Nicht begonnen" className="w-3 h-3 border-2 border-gray-400 dark:border-gray-600 rounded-full"></span>;
+    return <span title="Başlanmadı" className="w-3 h-3 border-2 border-gray-400 dark:border-gray-600 rounded-full"></span>;
 };
 
 export default QuranRecitationChecker;
