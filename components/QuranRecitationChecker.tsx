@@ -266,7 +266,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
     // --- Recitation & Navigation ---
     const handleReciteClick = () => {
         if (recitationStatus === 'recording') {
-            recognitionRef.current?.abort();
+            recognitionRef.current?.stop();
         } else {
             setLiveTranscript('');
             setLiveWordStatuses({});
