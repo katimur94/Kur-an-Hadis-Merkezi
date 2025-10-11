@@ -1,0 +1,27 @@
+{
+  "name": "Dijital Medrese",
+  "short_name": "Dijital Medrese",
+  "description": "Yapay zeka destekli kişisel ilim rehberiniz. Kur'an okuyun, hadis araştırın, kıraatinizi geliştirin ve fıkıh öğrenin.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#f9fafb",
+  "theme_color": "#0d9488",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    },
+    {
+        "src": "/icons/icon-512x512-maskable.png",
+        "type": "image/png",
+        "sizes": "512x512",
+        "purpose": "maskable"
+    }
+  ]
+}
