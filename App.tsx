@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as pako from 'pako';
 import QuranReader from './components/QuranReader';
 import HadithSearch from './components/HadithSearch';
@@ -8,8 +8,56 @@ import RisaleSearch from './components/RisaleSearch';
 import NamazVakitleri from './components/NamazVakitleri';
 import DuaSearch from './components/DuaSearch'; // Import the new component
 import { LugatContextProvider } from './components/Lugat';
+import { getAyahDetails } from './services/api';
+import { GoogleGenAI, Type } from "@google/genai";
+import Spinner from './components/Spinner';
+
 
 type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh' | 'risale' | 'namaz' | 'dua';
+
+// --- Speech Recognition Types (for cross-browser compatibility) ---
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onstart: () => void;
+  onend: () => void;
+  onerror: (event: SpeechRecognitionErrorEvent) => void;
+  start: () => void;
+  stop: () => void;
+}
+interface SpeechRecognitionEvent extends Event {
+  readonly resultIndex: number;
+  readonly results: SpeechRecognitionResultList;
+}
+interface SpeechRecognitionResultList {
+  readonly length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+interface SpeechRecognitionResult {
+  readonly isFinal: boolean;
+  readonly length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+}
+interface SpeechRecognitionAlternative {
+  readonly transcript: string;
+  readonly confidence: number;
+}
+interface SpeechRecognitionErrorEvent extends Event {
+  readonly error: string;
+  readonly message: string;
+}
+declare var SpeechRecognition: { prototype: SpeechRecognition; new(): SpeechRecognition; };
+declare var webkitSpeechRecognition: { prototype: SpeechRecognition; new(): SpeechRecognition; };
+declare global {
+  interface Window {
+    SpeechRecognition?: typeof SpeechRecognition;
+    webkitSpeechRecognition?: typeof webkitSpeechRecognition;
+  }
+}
 
 const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>);
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>);
@@ -18,7 +66,7 @@ const SunIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns
 const MoonIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25c0 5.385 4.365 9.75 9.75 9.75 2.733 0 5.24-.992 7.152-2.644Z" /></svg>);
 const FullscreenEnterIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15" /></svg>);
 const FullscreenExitIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9V4.5M15 9h4.5M15 9l5.25-5.25M15 15v4.5M15 15h4.5M15 15l5.25 5.25" /></svg>);
-
+const MicIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m12 0v-1.5a6 6 0 0 0-12 0v1.5m6 7.5a6 6 0 0 0 3-5.625M12 12.75a6 6 0 0 1-3-5.625" /><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 12a4.5 4.5 0 0 1 9 0v1.5a4.5 4.5 0 0 1-9 0V12Z" /></svg>);
 
 const App: React.FC = () => {
     const [currentView, setCurrentView] = useState<View>('home');
@@ -35,6 +83,16 @@ const App: React.FC = () => {
         if (localStorage.getItem('theme') === 'light') return 'light';
         return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     });
+    // Recite Ayah state
+    const [isReciteModalOpen, setReciteModalOpen] = useState(false);
+    const [reciteState, setReciteState] = useState<'idle' | 'recording' | 'processing' | 'result' | 'error'>('idle');
+    const [recitedTranscript, setRecitedTranscript] = useState('');
+    const [identifiedAyah, setIdentifiedAyah] = useState<{ surahName: string; surahNumber: number; ayahNumberInSurah: number; page: number; arabicText: string; overallAyahNumber: number } | null>(null);
+    const [reciteError, setReciteError] = useState<string | null>(null);
+    const [initialQuranPage, setInitialQuranPage] = useState<number | null>(null);
+    const [highlightAyah, setHighlightAyah] = useState<number | null>(null);
+    const recognitionRef = useRef<SpeechRecognition | null>(null);
+    const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
@@ -216,10 +274,121 @@ const App: React.FC = () => {
         });
     };
     
+     // --- Ayah Recitation Identification Logic ---
+    const identifyAyah = async (transcript: string) => {
+        setReciteState('processing');
+        setReciteError(null);
+        try {
+            const prompt = `Sen bir Kur'an uzmanısın. Sana Kur'an'dan bir ayetin Arapça okunuşunun dökümünü vereceğim. Görevin, bu ayetin hangi sureye ait olduğunu, sure numarasını ve sure içindeki ayet numarasını tespit etmektir. Cevabını SADECE şu JSON formatında ver: {"surahName": "Al-Fatihah", "surahNumber": 1, "ayahNumberInSurah": 1}`;
+
+            const response = await ai.current.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: `${prompt}\n\nAyet dökümü: "${transcript}"`,
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            surahName: { type: Type.STRING },
+                            surahNumber: { type: Type.INTEGER },
+                            ayahNumberInSurah: { type: Type.INTEGER },
+                        },
+                        required: ["surahName", "surahNumber", "ayahNumberInSurah"]
+                    }
+                }
+            });
+
+            const result = JSON.parse(response.text);
+            const details = await getAyahDetails(result.surahNumber, result.ayahNumberInSurah);
+
+            setIdentifiedAyah({
+                ...result,
+                page: details.page,
+                arabicText: details.arabicText,
+                overallAyahNumber: details.number
+            });
+            setReciteState('result');
+
+        } catch (err) {
+            console.error("Ayah identification failed:", err);
+            setReciteError("Ayet tespit edilemedi. Lütfen daha net bir şekilde tekrar okuyun veya daha uzun bir bölüm okumayı deneyin.");
+            setReciteState('error');
+        }
+    };
+
+    const handleReciteButtonClick = () => {
+        if (reciteState === 'recording') {
+            recognitionRef.current?.stop(); // This will trigger the 'onend' event
+        } else {
+            const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognitionAPI) {
+                setReciteError("Tarayıcınız ses tanımayı desteklemiyor.");
+                setReciteState('error');
+                return;
+            }
+            
+            recognitionRef.current = new SpeechRecognitionAPI();
+            recognitionRef.current.lang = 'ar-SA';
+            recognitionRef.current.continuous = false;
+            recognitionRef.current.interimResults = false;
+
+            recognitionRef.current.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                setRecitedTranscript(transcript);
+                identifyAyah(transcript);
+            };
+            
+            recognitionRef.current.onstart = () => {
+                setReciteState('recording');
+                setReciteError(null);
+                setIdentifiedAyah(null);
+            };
+
+            recognitionRef.current.onend = () => {
+                // FIX: Use functional setState to get the latest state and avoid stale closure issues
+                // that cause TypeScript control flow analysis errors.
+                setReciteState(currentReciteState => {
+                    if (currentReciteState === 'recording') { // Stopped manually before result
+                        return 'processing';
+                    }
+                    return currentReciteState;
+                });
+            };
+            
+            recognitionRef.current.onerror = (event) => {
+                 setReciteError(`Mikrofon hatası: ${event.error}. Lütfen tarayıcı izinlerini kontrol edin.`);
+                 setReciteState('error');
+            };
+
+            recognitionRef.current.start();
+        }
+    };
+
+    const handleNavigateToAyah = () => {
+        if (identifiedAyah) {
+            setInitialQuranPage(identifiedAyah.page);
+            setHighlightAyah(identifiedAyah.overallAyahNumber);
+            navigateTo('quran');
+            closeReciteModal();
+        }
+    };
+
+    const closeReciteModal = () => {
+        recognitionRef.current?.stop();
+        setReciteModalOpen(false);
+        // Reset state for next time
+        setTimeout(() => {
+            setReciteState('idle');
+            setIdentifiedAyah(null);
+            setReciteError(null);
+            setRecitedTranscript('');
+        }, 300); // delay to allow modal to close gracefully
+    };
+
     let content;
 
     if (currentView === 'quran') {
-        content = <QuranReader onGoHome={goHome} />;
+        content = <QuranReader onGoHome={goHome} initialPage={initialQuranPage} highlightAyahNumber={highlightAyah} />;
     } else if (currentView === 'hadith') {
         content = <HadithSearch onGoHome={goHome} />;
     } else if (currentView === 'recitation') {
@@ -285,6 +454,9 @@ const App: React.FC = () => {
                         <button onClick={toggleTheme} title="Temayı Değiştir" className="p-3 bg-transparent text-gray-600 dark:text-gray-400 font-semibold rounded-full border-2 border-gray-400 dark:border-gray-500 hover:bg-gray-400 hover:text-white dark:hover:bg-gray-500 dark:hover:text-gray-900 transition-colors duration-300">
                             {theme === 'light' ? <MoonIcon className="w-6 h-6" /> : <SunIcon className="w-6 h-6" />}
                         </button>
+                         <button onClick={() => setReciteModalOpen(true)} title="Ayet Bul" className="p-3 bg-transparent text-gray-600 dark:text-gray-400 font-semibold rounded-full border-2 border-gray-400 dark:border-gray-500 hover:bg-gray-400 hover:text-white dark:hover:bg-gray-500 dark:hover:text-gray-900 transition-colors duration-300">
+                           <MicIcon className="w-6 h-6" />
+                       </button>
                         <button onClick={toggleFullScreen} title={isFullScreen ? "Tam Ekrandan Çık" : "Tam Ekran"} className="p-3 bg-transparent text-gray-600 dark:text-gray-400 font-semibold rounded-full border-2 border-gray-400 dark:border-gray-500 hover:bg-gray-400 hover:text-white dark:hover:bg-gray-500 dark:hover:text-gray-900 transition-colors duration-300">
                            {isFullScreen ? <FullscreenExitIcon className="w-6 h-6" /> : <FullscreenEnterIcon className="w-6 h-6" />}
                        </button>
@@ -403,6 +575,59 @@ const App: React.FC = () => {
                                         <li><strong>Tema Seçimi:</strong> Anasayfadaki Ay/Güneş ikonuyla açık ve koyu tema arasında geçiş yapabilirsiniz.</li>
                                     </ul>
                                 </section>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                 {isReciteModalOpen && (
+                    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={closeReciteModal}>
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg min-h-[350px] flex flex-col animate-scale-in" onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center p-4 border-b dark:border-gray-700">
+                                <h2 className="text-xl font-bold">Sesle Ayet Bul</h2>
+                                <button onClick={closeReciteModal} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"><CloseIcon/></button>
+                            </div>
+                            <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
+                                {reciteState === 'idle' && (
+                                    <>
+                                        <p className="text-gray-600 dark:text-gray-400 mb-6">Bulmak istediğiniz ayeti okumak için aşağıdaki mikrofona tıklayın.</p>
+                                        <button onClick={handleReciteButtonClick} className="w-20 h-20 bg-teal-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-teal-700 transition-colors">
+                                            <MicIcon className="w-10 h-10" />
+                                        </button>
+                                    </>
+                                )}
+                                {reciteState === 'recording' && (
+                                     <>
+                                        <p className="text-gray-600 dark:text-gray-400 mb-6">Dinleniyor... Bitince tekrar basın.</p>
+                                        <button onClick={handleReciteButtonClick} className="w-20 h-20 bg-red-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-red-700 transition-colors animate-pulse">
+                                            <div className="w-8 h-8 bg-white rounded-md"></div>
+                                        </button>
+                                    </>
+                                )}
+                                {reciteState === 'processing' && (
+                                    <>
+                                        <Spinner />
+                                        <p className="text-gray-600 dark:text-gray-400 mt-4">Ayet tespit ediliyor...</p>
+                                    </>
+                                )}
+                                {reciteState === 'result' && identifiedAyah && (
+                                    <div className="w-full">
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Tespit Edilen Ayet:</p>
+                                        <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-lg mb-6">
+                                            <p dir="rtl" className="font-amiri text-2xl mb-2">{identifiedAyah.arabicText}</p>
+                                            <p className="font-semibold">{identifiedAyah.surahName} Suresi, {identifiedAyah.ayahNumberInSurah}. Ayet</p>
+                                        </div>
+                                        <div className="flex justify-center space-x-4">
+                                            <button onClick={closeReciteModal} className="px-6 py-2 bg-gray-200 dark:bg-gray-600 rounded-lg font-semibold hover:bg-gray-300 dark:hover:bg-gray-500">İptal</button>
+                                            <button onClick={handleNavigateToAyah} className="px-6 py-2 bg-teal-600 text-white rounded-lg font-semibold hover:bg-teal-700">Ayet'e Git</button>
+                                        </div>
+                                    </div>
+                                )}
+                                 {reciteState === 'error' && (
+                                    <div className="w-full">
+                                        <p className="text-red-500 mb-6">{reciteError}</p>
+                                        <button onClick={() => setReciteState('idle')} className="px-6 py-2 bg-teal-600 text-white rounded-lg font-semibold hover:bg-teal-700">Tekrar Dene</button>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
