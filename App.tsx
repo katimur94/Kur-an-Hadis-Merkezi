@@ -444,13 +444,9 @@ const App: React.FC = () => {
                             <p className="text-gray-600 dark:text-gray-300">Sünnet'ten duaları ve zikirleri anlamları, okunuşları ve kaynaklarıyla bulun.</p>
                         </button>
                     </div>
-                    <div className="mt-8 flex space-x-4 items-center">
-                         <button onClick={() => setInfoModalOpen(true)} className="px-6 py-3 bg-transparent text-teal-600 dark:text-teal-400 font-semibold rounded-lg border-2 border-teal-600 dark:border-teal-400 hover:bg-teal-600 hover:text-white dark:hover:bg-teal-400 dark:hover:text-gray-900 transition-colors duration-300">
-                            Uygulamayı Tanı
-                        </button>
-                        <button onClick={() => setBackupModalOpen(true)} className="px-6 py-3 bg-transparent text-amber-600 dark:text-amber-400 font-semibold rounded-lg border-2 border-amber-600 dark:border-amber-400 hover:bg-amber-600 hover:text-white dark:hover:bg-amber-400 dark:hover:text-gray-900 transition-colors duration-300">
-                            Yedekle & Geri Yükle
-                        </button>
+                    <div className="mt-8 flex w-full flex-col items-center space-y-4 px-4">
+                        {/* Icons Row */}
+                        <div className="flex space-x-4">
                         <button onClick={toggleTheme} title="Temayı Değiştir" className="p-3 bg-transparent text-gray-600 dark:text-gray-400 font-semibold rounded-full border-2 border-gray-400 dark:border-gray-500 hover:bg-gray-400 hover:text-white dark:hover:bg-gray-500 dark:hover:text-gray-900 transition-colors duration-300">
                             {theme === 'light' ? <MoonIcon className="w-6 h-6" /> : <SunIcon className="w-6 h-6" />}
                         </button>
@@ -460,6 +456,17 @@ const App: React.FC = () => {
                         <button onClick={toggleFullScreen} title={isFullScreen ? "Tam Ekrandan Çık" : "Tam Ekran"} className="p-3 bg-transparent text-gray-600 dark:text-gray-400 font-semibold rounded-full border-2 border-gray-400 dark:border-gray-500 hover:bg-gray-400 hover:text-white dark:hover:bg-gray-500 dark:hover:text-gray-900 transition-colors duration-300">
                            {isFullScreen ? <FullscreenExitIcon className="w-6 h-6" /> : <FullscreenEnterIcon className="w-6 h-6" />}
                        </button>
+                           </div>
+                        
+                        {/* Text Buttons Container */}
+                        <div className="flex w-full max-w-sm flex-col items-stretch space-y-4">
+                            <button onClick={() => setInfoModalOpen(true)} className="px-6 py-3 bg-transparent text-teal-600 dark:text-teal-400 font-semibold rounded-lg border-2 border-teal-600 dark:border-teal-400 hover:bg-teal-600 hover:text-white dark:hover:bg-teal-400 dark:hover:text-gray-900 transition-colors duration-300">
+                                Uygulamayı Tanı
+                            </button>
+                            <button onClick={() => setBackupModalOpen(true)} className="px-6 py-3 bg-transparent text-amber-600 dark:text-amber-400 font-semibold rounded-lg border-2 border-amber-600 dark:border-amber-400 hover:bg-amber-600 hover:text-white dark:hover:bg-amber-400 dark:hover:text-gray-900 transition-colors duration-300">
+                                Yedekle & Geri Yükle
+                            </button>
+                        </div>
                     </div>
                 </main>
                 <footer className="mt-12 text-center text-gray-500 dark:text-gray-400 text-sm">
