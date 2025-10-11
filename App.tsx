@@ -6,9 +6,10 @@ import QuranRecitationChecker from './components/QuranRecitationChecker';
 import FiqhChat from './components/FiqhChat';
 import RisaleSearch from './components/RisaleSearch';
 import NamazVakitleri from './components/NamazVakitleri';
+import DuaSearch from './components/DuaSearch'; // Import the new component
 import { LugatContextProvider } from './components/Lugat';
 
-type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh' | 'risale' | 'namaz';
+type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh' | 'risale' | 'namaz' | 'dua';
 
 const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>);
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>);
@@ -76,7 +77,7 @@ const App: React.FC = () => {
             }
 
             if (module && importedDataString) {
-                const validModules: View[] = ['hadith', 'fiqh', 'risale', 'namaz'];
+                const validModules: View[] = ['hadith', 'fiqh', 'risale', 'namaz', 'dua'];
                 
                 if (validModules.includes(module as View)) {
                     sessionStorage.setItem(`importedDataFor_${module}`, importedDataString);
@@ -120,6 +121,7 @@ const App: React.FC = () => {
                 'hadithSearchHistory',
                 'fiqhChatHistory',
                 'risaleSearchHistory',
+                'duaSearchHistory',
                 'recitationProgressV2',
                 'quranViewMode',
                 'quranLastPage',
@@ -207,6 +209,8 @@ const App: React.FC = () => {
         content = <RisaleSearch onGoHome={goHome} />;
     } else if (currentView === 'namaz') {
         content = <NamazVakitleri onGoHome={goHome} />;
+    } else if (currentView === 'dua') {
+        content = <DuaSearch onGoHome={goHome} />;
     } else {
         content = (
             <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center p-4 text-gray-800 dark:text-gray-200">
@@ -245,6 +249,10 @@ const App: React.FC = () => {
                             <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Namaz Vakitleri</h2>
                             <p className="text-gray-600 dark:text-gray-300">Bulunduğunuz konuma göre günlük namaz vakitlerini ve kalan süreyi öğrenin.</p>
                         </button>
+                        <button onClick={() => navigateTo('dua')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
+                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Dua & Zikir Arama</h2>
+                            <p className="text-gray-600 dark:text-gray-300">Sünnet'ten duaları ve zikirleri anlamları, okunuşları ve kaynaklarıyla bulun.</p>
+                        </button>
                     </div>
                     <div className="mt-8 flex space-x-4 items-center">
                          <button onClick={() => setInfoModalOpen(true)} className="px-6 py-3 bg-transparent text-teal-600 dark:text-teal-400 font-semibold rounded-lg border-2 border-teal-600 dark:border-teal-400 hover:bg-teal-600 hover:text-white dark:hover:bg-teal-400 dark:hover:text-gray-900 transition-colors duration-300">
@@ -279,7 +287,7 @@ const App: React.FC = () => {
                                 {backupTab === 'create' ? (
                                     <div className="space-y-4">
                                         <h3 className="text-lg font-semibold">Tüm Uygulama Verilerinizi Yedekleyin</h3>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">Bu işlem, tüm arama geçmişlerinizi (Hadis, Fıkıh, Risale), namaz vakti geçmişinizi ve Kur'an okuma ilerlemenizi/ayarlarınızı tek bir koda dönüştürür. Bu kodu güvenli bir yere kaydedin ve başka bir cihaza verilerinizi aktarmak için kullanın.</p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Bu işlem, tüm arama geçmişlerinizi, namaz vakti geçmişinizi ve Kur'an okuma ilerlemenizi/ayarlarınızı tek bir koda dönüştürür. Bu kodu güvenli bir yere kaydedin ve başka bir cihaza verilerinizi aktarmak için kullanın.</p>
                                         <button onClick={handleCreateBackup} className="w-full px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg hover:bg-teal-700 transition-colors">
                                             Yedekleme Kodu Oluştur
                                         </button>
@@ -321,6 +329,15 @@ const App: React.FC = () => {
                                 <button onClick={() => setInfoModalOpen(false)} className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"><CloseIcon className="w-6 h-6" /></button>
                             </div>
                             <div className="p-6 overflow-y-auto space-y-8 text-gray-700 dark:text-gray-300 leading-relaxed">
+                                <section>
+                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Yapay Zeka Destekli Araştırma Modülleri</h3>
+                                    <ul className="list-disc list-inside space-y-3">
+                                        <li><strong>Dua & Zikir Arama:</strong> Bir konu (örn: "vesvese için zikir") veya durum (örn: "tuvalete girerken") hakkında Sünnet'ten duaları ve zikirleri aratın. Yapay zeka, duanın Arapça aslını, Latin harfleriyle okunuşunu, Türkçe anlamını, ne zaman okunacağını ve kaynak hadis/ayetini size sunar.</li>
+                                        <li><strong>Hadis Araştırma:</strong> Bir konu (örn: "sadakanın fazileti") hakkında hadisleri kaynaklarıyla aratın. <strong className="text-amber-600 dark:text-amber-400">Önemli:</strong> Listelenen bir hadise tıkladığınızda, yapay zeka o hadis özelinde dört büyük mezhep imamının fıkhi yorumlarını ve hükümlerini kaynaklarıyla birlikte size sunar.</li>
+                                        <li><strong>Fıkıh Soru & Cevap:</strong> Fıkhi bir soru sorun (örn: "Seferi namazı nasıl kılınır?"). Yapay zeka, sorunuza dört mezhebin görüşlerini, delilleri olan ayet ve hadisleri, ve her bilginin kaynağını içeren yapılandırılmış, detaylı bir cevap oluşturur. <strong className="text-amber-600 dark:text-amber-400">Yeni:</strong> "İslam'ın şartları" veya "Namazın şartları" gibi temel konuları sorduğunuzda, cevaplar her bir maddeyi ayrı ayrı inceleyebileceğiniz, tıklanarak açılan interaktif bir liste formatında sunulur.</li>
+                                        <li><strong>Risale-i Nur'da Ara:</strong> Merak ettiğiniz bir konuyu (örn: "Şükür hakikati") sorun. Yapay zeka, Risale-i Nur Külliyatı'ndan konunun özetini, ilgili bahisleri ve temel prensipleri (düsturlar, esaslar) kaynaklarıyla birlikte derleyerek sunar.</li>
+                                    </ul>
+                                </section>
                                  <section>
                                     <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Namaz Vakitleri</h3>
                                     <ul className="list-disc list-inside space-y-2">
@@ -350,14 +367,6 @@ const App: React.FC = () => {
                                         <li><strong>Sonuçları İnceleyin:</strong> Analiz tamamlandığında, tespit edilen hatalar kırmızı ile vurgulanır. Hatalı bir kelimeye tıkladığınızda, hatanın ne olduğunu, nasıl düzeltileceğini ve ilgili tecvid kuralını açıklayan bir pencere açılır.</li>
                                         <li><strong>İlerleme Takibi:</strong> Kenar çubuğunda, her sayfanın yanında ilerleme durumunuzu (○ Başlanmadı, ▶ Devam Ediyor, ✔ Tamamlandı) görebilirsiniz.</li>
                                     </ol>
-                                </section>
-                                 <section>
-                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Yapay Zeka Destekli Araştırma Modülleri</h3>
-                                    <ul className="list-disc list-inside space-y-3">
-                                        <li><strong>Hadis Araştırma:</strong> Bir konu (örn: "sadakanın fazileti") hakkında hadisleri kaynaklarıyla aratın. <strong className="text-amber-600 dark:text-amber-400">Önemli:</strong> Listelenen bir hadise tıkladığınızda, yapay zeka o hadis özelinde dört büyük mezhep imamının fıkhi yorumlarını ve hükümlerini kaynaklarıyla birlikte size sunar.</li>
-                                        <li><strong>Fıkıh Soru & Cevap:</strong> Fıkhi bir soru sorun (örn: "Seferi namazı nasıl kılınır?"). Yapay zeka, sorunuza dört mezhebin görüşlerini, delilleri olan ayet ve hadisleri, ve her bilginin kaynağını içeren yapılandırılmış, detaylı bir cevap oluşturur. <strong className="text-amber-600 dark:text-amber-400">Yeni:</strong> "İslam'ın şartları" veya "Namazın şartları" gibi temel konuları sorduğunuzda, cevaplar her bir maddeyi ayrı ayrı inceleyebileceğiniz, tıklanarak açılan interaktif bir liste formatında sunulur.</li>
-                                        <li><strong>Risale-i Nur'da Ara:</strong> Merak ettiğiniz bir konuyu (örn: "Şükür hakikati") sorun. Yapay zeka, Risale-i Nur Külliyatı'ndan konunun özetini, ilgili bahisleri ve temel prensipleri (düsturlar, esaslar) kaynaklarıyla birlikte derleyerek sunar.</li>
-                                    </ul>
                                 </section>
                                 <section>
                                     <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Ortak Özellikler</h3>
