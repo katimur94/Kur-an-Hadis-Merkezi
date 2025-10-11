@@ -382,10 +382,16 @@ const QuranReader: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                             <button onClick={handleStop} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700" disabled={!isPlaying && currentTrackIndex === -1}><StopIcon/></button>
                         </div>
                     </div>
-                    <div className="flex-1 flex justify-center">
+                    <div className="flex-1 flex justify-center px-1 min-w-0">
                          <div className="bg-gray-100 dark:bg-gray-700 p-1 rounded-lg flex items-center">
-                            <button onClick={() => setViewMode('quran')} className={`px-4 py-1 text-sm rounded-md ${viewMode === 'quran' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>Kur'an Görünümü</button>
-                            <button onClick={() => setViewMode('translation')} className={`px-4 py-1 text-sm rounded-md ${viewMode === 'translation' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>Meal Görünümü</button>
+                            <button onClick={() => setViewMode('quran')} className={`px-2 sm:px-4 py-1 text-xs sm:text-sm rounded-md whitespace-nowrap ${viewMode === 'quran' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>
+                                <span className="sm:hidden">Kur'an</span>
+                                <span className="hidden sm:inline">Kur'an Görünümü</span>
+                            </button>
+                            <button onClick={() => setViewMode('translation')} className={`px-2 sm:px-4 py-1 text-xs sm:text-sm rounded-md whitespace-nowrap ${viewMode === 'translation' ? 'bg-white dark:bg-gray-800 shadow' : ''}`}>
+                                <span className="sm:hidden">Meal</span>
+                                <span className="hidden sm:inline">Meal Görünümü</span>
+                            </button>
                         </div>
                     </div>
                     <div className="flex items-center space-x-2">
