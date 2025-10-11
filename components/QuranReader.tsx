@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getPageDetail, getSurahList, getSurahDetailForPageJump, getReciterList, getJuzVerses, getSurahVerses } from '../services/api';
 import type { SurahSummary, CombinedAyah, Reciter, PlaylistItem } from '../types';
@@ -38,10 +37,16 @@ const FONT_LIST = [
 
 type PlaybackMode = 'juz' | 'surah' | 'page' | 'none';
 
-const QuranReader: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
+interface QuranReaderProps {
+    onGoHome: () => void;
+    initialPage?: number | null;
+    highlightAyahNumber?: number | null;
+}
+
+const QuranReader: React.FC<QuranReaderProps> = ({ onGoHome, initialPage, highlightAyahNumber }) => {
     // Component State
     const [viewMode, setViewMode] = useState<'quran' | 'translation'>(() => (localStorage.getItem('quranViewMode') as 'quran' | 'translation') || 'quran');
-    const [currentPage, setCurrentPage] = useState<number>(() => parseInt(localStorage.getItem('quranLastPage') || '1'));
+    const [currentPage, setCurrentPage] = useState<number>(() => initialPage || parseInt(localStorage.getItem('quranLastPage') || '1'));
     const [pageData, setPageData] = useState<CombinedAyah[]>([]);
     const [surahList, setSurahList] = useState<SurahSummary[]>([]);
     const [reciterList, setReciterList] = useState<Reciter[]>([]);
@@ -276,12 +281,22 @@ const QuranReader: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                     </div>
                 );
             }
+            const isPermanentlyHighlighted = highlightAyahNumber === ayah.number;
+            let ayahClasses = 'cursor-pointer transition-all duration-300 rounded px-1';
+            if (isPermanentlyHighlighted) {
+                 ayahClasses += ' bg-yellow-200 dark:bg-yellow-800/50';
+            }
+            if(currentlyPlayingAyahNumber === ayah.number) {
+                 ayahClasses += ' font-bold text-teal-600 dark:text-teal-400';
+            } else if (!isPermanentlyHighlighted) {
+                 ayahClasses += ' hover:bg-gray-200 dark:hover:bg-gray-700';
+            }
 
             elements.push(
                 <span
                     key={ayah.number}
                     onClick={() => handleAyahClick(ayah)}
-                    className={`cursor-pointer transition-colors duration-300 rounded px-1 ${currentlyPlayingAyahNumber === ayah.number ? 'font-bold text-teal-600 dark:text-teal-400' : 'hover:bg-gray-200 dark:hover:bg-gray-700'}`}
+                    className={ayahClasses}
                 >
                     {ayah.arabicText}
                     <span className="text-sm font-sans text-amber-600 dark:text-amber-400 mx-1">۝{toArabicNumeral(ayah.numberInSurah)}</span>
@@ -312,6 +327,7 @@ const QuranReader: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
         const elements: React.ReactNode[] = [];
 
         pageData.forEach((ayah, index) => {
+            const isPermanentlyHighlighted = highlightAyahNumber === ayah.number;
             // Add a separator if a new surah begins on this page
             if (index > 0 && ayah.surah.number !== pageData[index - 1].surah.number) {
                  elements.push(
@@ -320,10 +336,15 @@ const QuranReader: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                     </div>
                 );
             }
+            
+            let arabicTextClasses = `text-right text-3xl leading-loose mb-4 cursor-pointer transition-colors duration-300`;
+             if (currentlyPlayingAyahNumber === ayah.number) {
+                 arabicTextClasses += ' font-bold text-teal-600 dark:text-teal-400';
+            }
 
             elements.push(
-                <div key={ayah.number} className="py-4 border-b border-gray-200 dark:border-gray-700 rounded-md p-2">
-                    <p style={{fontFamily: fontFamily}} className={`text-right text-3xl leading-loose mb-4 cursor-pointer transition-colors duration-300 ${currentlyPlayingAyahNumber === ayah.number ? 'font-bold text-teal-600 dark:text-teal-400' : ''}`} onClick={() => handleAyahClick(ayah)}>
+                <div key={ayah.number} className={`py-4 border-b border-gray-200 dark:border-gray-700 rounded-md p-2 transition-colors duration-300 ${isPermanentlyHighlighted ? 'bg-yellow-100 dark:bg-yellow-900/40' : ''}`}>
+                    <p style={{fontFamily: fontFamily}} className={arabicTextClasses} onClick={() => handleAyahClick(ayah)}>
                         {ayah.arabicText} <span className="text-sm font-sans p-1 border rounded-full">{ayah.numberInSurah}</span>
                     </p>
                     <p className="text-gray-600 dark:text-gray-400 mb-4">
