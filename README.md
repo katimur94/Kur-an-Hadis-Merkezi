@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" alt="Dijital Medrese Banner">
+  
   <h1 align="center">Dijital Medrese</h1>
   <p align="center">
     <strong>Yapay Zeka Destekli Kişisel İlim Rehberiniz</strong>
