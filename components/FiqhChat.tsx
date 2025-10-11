@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import * as htmlToImage from 'html-to-image';
@@ -20,6 +19,8 @@ const TrashIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xml
 const EditIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>);
 const ShareIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.186 2.25 2.25 0 0 0-3.933 2.186Z" /></svg>);
 const MiniSpinner: React.FC = () => (<div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>);
+const AccordionIcon: React.FC<{ isOpen: boolean }> = ({ isOpen }) => (<svg className={`w-5 h-5 transition-transform duration-300 text-gray-500 ${isOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>);
+
 
 type Message = {
     role: 'user' | 'model';
@@ -78,6 +79,72 @@ const FiqhSourceDetailModal: React.FC<{ sourceInfo: FiqhSourceInfo; onClose: () 
     );
 };
 
+const StructuredSummary: React.FC<{ text: string }> = ({ text }) => {
+    const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+    const parseSummary = (text: string) => {
+        const listItems = text.match(/^\d+\.\s+.*$/gm); // Find lines starting with "1. ", "2. " etc.
+        if (!listItems || listItems.length < 2) {
+            return null;
+        }
+
+        const parts = text.split(/\n\n(?=\d+\.\s+)/);
+        if (parts.length < 2) return null;
+
+        const intro = parts[0].match(/^\d+\.\s+/) ? '' : parts[0];
+        const itemsRaw = intro ? parts.slice(1) : parts;
+
+        const items = itemsRaw.map(part => {
+            const firstLineEnd = part.indexOf('\n');
+            if (firstLineEnd === -1) {
+                return { title: part.trim().replace(/^\d+\.\s+/, '').replace(/\*+/g, ''), content: '' };
+            }
+            const title = part.substring(0, firstLineEnd).trim().replace(/^\d+\.\s+/, '').replace(/\*+/g, '');
+            const content = part.substring(firstLineEnd + 1).trim();
+            return { title, content };
+        }).filter(item => item.title && item.content);
+        
+        if (items.length < 2) return null;
+
+        return { intro, items };
+    };
+
+    const structuredData = parseSummary(text);
+
+    if (!structuredData) {
+        return <p className="text-gray-700 dark:text-gray-300 leading-relaxed"><HighlightableText>{text}</HighlightableText></p>;
+    }
+    
+    const toggleItem = (index: number) => {
+        setOpenIndex(openIndex === index ? null : index);
+    };
+
+    return (
+        <div>
+            {structuredData.intro && <p className="text-gray-700 dark:text-gray-300 leading-relaxed mb-4"><HighlightableText>{structuredData.intro}</HighlightableText></p>}
+            <div className="space-y-2">
+                {structuredData.items.map((item, index) => (
+                    <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                        <button
+                            onClick={() => toggleItem(index)}
+                            className="w-full flex justify-between items-center text-left p-4 font-semibold text-lg text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                        >
+                            <span>{item.title}</span>
+                            <AccordionIcon isOpen={openIndex === index} />
+                        </button>
+                        {openIndex === index && (
+                            <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+                                <p className="text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap"><HighlightableText>{item.content}</HighlightableText></p>
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+
 const FiqhChat: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [userInput, setUserInput] = useState('');
@@ -97,7 +164,7 @@ const FiqhChat: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const responseCardRefs = useRef<(HTMLDivElement | null)[]>([]);
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
+   const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
     const model = 'gemini-2.5-flash';
     
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
@@ -224,10 +291,17 @@ const FiqhChat: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                 contents: prompt,
                 config: {
                     systemInstruction: `Sen, dört Sünni mezhep (Hanefi, Şafii, Maliki, Hanbeli) konusunda uzmanlaşmış bir Fıkıh alimisin. Kullanıcının fıkhi sorularını yanıtlarken, aşağıdaki yapıya harfiyen uymalısın VE TÜM BÖLÜMLERİ DOLDURMALISIN:
-1.  **Özet:** Sorunun cevabını net, kısa ve anlaşılır bir şekilde özetle.
-2.  **Mezheplerin Görüşleri:** Dört büyük mezhebin konu hakkındaki görüşlerini ayrı ayrı belirt. Her görüş için, bu bilginin alındığı temel fıkıh eserini kaynak olarak göstermelisin. Kaynak bilgisi; eserin adı, yazarı, cilt ve sayfa numarasını içermelidir.
-3.  **İlgili Hadisler:** Konuyla doğrudan ilgili en fazla 2-3 adet sahih hadis sun. Her hadis için Arapça metnini, Türkçe tercümesini, tam kaynağını (örn: 'Sahih-i Buhari, Oruç, 2') ve sıhhat durumunu ('Sahih', 'Hasan' vb.) belirt.
-4.  **İlgili Kur'an Ayetleri:** Konuyla ilgili ayetler varsa, Arapça metni, Türkçe meali ve referansı (örn: 'Bakara, 183') ile birlikte sun.
+
+**ÖZEL KURAL:** Kullanıcının sorusu, İslam'ın temel direklerini, şartlarını, farzlarını veya rükünlerini (örneğin: İslam'ın şartları, imanın şartları, namazın şartları, abdestin farzları gibi) listeleyen bir cevap gerektiriyorsa, 'summary' alanını özel bir formatta oluşturmalısın:
+1.  Kısa bir giriş paragrafı yaz.
+2.  Ardından, her bir şartı veya prensibi **ayrıntılı olarak açıklayan**, numaralandırılmış bir liste sun. Her maddenin başlığını kalın (markdown: **) olarak işaretle (örn: "1. **Kelime-i Şehadet Getirmek**").
+3.  Her maddenin altına, o prensibin ne anlama geldiğini, nasıl uygulandığını ve önemini detaylıca açıkla. Bu açıklamalar kapsamlı ve eğitici olmalıdır.
+
+**GENEL YAPI:**
+1.  **summary**: Sorunun cevabını net, kısa ve anlaşılır bir şekilde özetle. (Yukarıdaki ÖZEL KURAL'a dikkat et).
+2.  **madhahibPositions**: Dört büyük mezhebin konu hakkındaki görüşlerini ayrı ayrı belirt. Her görüş için, bu bilginin alındığı temel fıkıh eserini kaynak olarak göstermelisin. Kaynak bilgisi; eserin adı, yazarı, cilt ve sayfa numarasını içermelidir.
+3.  **relevantHadiths**: Konuyla doğrudan ilgili en fazla 2-3 adet sahih hadis sun. Her hadis için Arapça metnini, Türkçe tercümesini, tam kaynağını (örn: 'Sahih-i Buhari, Oruç, 2') ve sıhhat durumunu ('Sahih', 'Hasan' vb.) belirt.
+4.  **relevantQuranVerses**: Konuyla ilgili ayetler varsa, Arapça metni, Türkçe meali ve referansı (örn: 'Bakara, 183') ile birlikte sun.
 Cevabın her zaman bu yapılandırılmış formatta ve JSON olarak dönmelidir. Eğer bir bölüm için (hadis, ayet, mezhep görüşü) bilgi bulamazsan, o bölüm için boş bir dizi [] döndür, ama anahtarı (key) asla yanıttan çıkarma.`,
                     responseMimeType: "application/json",
                     responseSchema: {
@@ -496,9 +570,7 @@ Cevabın her zaman bu yapılandırılmış formatta ve JSON olarak dönmelidir. 
                                     {/* Summary */}
                                     <section>
                                         <h2 className="text-xl font-bold text-teal-600 dark:text-teal-400 mb-2">Özet</h2>
-                                        <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
-                                            <HighlightableText>{msg.content.summary}</HighlightableText>
-                                        </p>
+                                        <StructuredSummary text={msg.content.summary} />
                                     </section>
                                     
                                     {/* Madhahib */}
