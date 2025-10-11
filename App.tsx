@@ -67,6 +67,8 @@ const MoonIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmln
 const FullscreenEnterIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15" /></svg>);
 const FullscreenExitIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9V4.5M15 9h4.5M15 9l5.25-5.25M15 15v4.5M15 15h4.5M15 15l5.25 5.25" /></svg>);
 const MicIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m12 0v-1.5a6 6 0 0 0-12 0v1.5m6 7.5a6 6 0 0 0 3-5.625M12 12.75a6 6 0 0 1-3-5.625" /><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 12a4.5 4.5 0 0 1 9 0v1.5a4.5 4.5 0 0 1-9 0V12Z" /></svg>);
+const BookOpenIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" /></svg>);
+const ShareIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.186 2.25 2.25 0 0 0-3.933 2.186Z" /></svg>);
 
 const App: React.FC = () => {
     const [currentView, setCurrentView] = useState<View>('home');
@@ -93,6 +95,7 @@ const App: React.FC = () => {
     const [highlightAyah, setHighlightAyah] = useState<number | null>(null);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
     const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
+
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
@@ -444,22 +447,22 @@ const App: React.FC = () => {
                             <p className="text-gray-600 dark:text-gray-300">Sünnet'ten duaları ve zikirleri anlamları, okunuşları ve kaynaklarıyla bulun.</p>
                         </button>
                     </div>
-                    <div className="mt-8 flex w-full flex-col items-center space-y-4 px-4">
-                        {/* Icons Row */}
-                        <div className="flex space-x-4">
-                        <button onClick={toggleTheme} title="Temayı Değiştir" className="p-3 bg-transparent text-gray-600 dark:text-gray-400 font-semibold rounded-full border-2 border-gray-400 dark:border-gray-500 hover:bg-gray-400 hover:text-white dark:hover:bg-gray-500 dark:hover:text-gray-900 transition-colors duration-300">
-                            {theme === 'light' ? <MoonIcon className="w-6 h-6" /> : <SunIcon className="w-6 h-6" />}
+                     <div className="mt-8 flex w-full flex-col items-center space-y-4 px-4 md:flex-row md:justify-center md:space-x-8 md:space-y-0">
+                        {/* Icons Row on top for mobile */}
+                        <div className="flex space-x-4 md:order-2">
+                            <button onClick={toggleTheme} title="Temayı Değiştir" className="p-3 bg-transparent text-gray-600 dark:text-gray-400 font-semibold rounded-full border-2 border-gray-400 dark:border-gray-500 hover:bg-gray-400 hover:text-white dark:hover:bg-gray-500 dark:hover:text-gray-900 transition-colors duration-300">
+                                {theme === 'light' ? <MoonIcon className="w-6 h-6" /> : <SunIcon className="w-6 h-6" />}
+                            </button>
+                            <button onClick={() => setReciteModalOpen(true)} title="Ayet Bul" className="p-3 bg-transparent text-gray-600 dark:text-gray-400 font-semibold rounded-full border-2 border-gray-400 dark:border-gray-500 hover:bg-gray-400 hover:text-white dark:hover:bg-gray-500 dark:hover:text-gray-900 transition-colors duration-300">
+                            <MicIcon className="w-6 h-6" />
                         </button>
-                         <button onClick={() => setReciteModalOpen(true)} title="Ayet Bul" className="p-3 bg-transparent text-gray-600 dark:text-gray-400 font-semibold rounded-full border-2 border-gray-400 dark:border-gray-500 hover:bg-gray-400 hover:text-white dark:hover:bg-gray-500 dark:hover:text-gray-900 transition-colors duration-300">
-                           <MicIcon className="w-6 h-6" />
-                       </button>
-                        <button onClick={toggleFullScreen} title={isFullScreen ? "Tam Ekrandan Çık" : "Tam Ekran"} className="p-3 bg-transparent text-gray-600 dark:text-gray-400 font-semibold rounded-full border-2 border-gray-400 dark:border-gray-500 hover:bg-gray-400 hover:text-white dark:hover:bg-gray-500 dark:hover:text-gray-900 transition-colors duration-300">
-                           {isFullScreen ? <FullscreenExitIcon className="w-6 h-6" /> : <FullscreenEnterIcon className="w-6 h-6" />}
-                       </button>
-                           </div>
+                            <button onClick={toggleFullScreen} title={isFullScreen ? "Tam Ekrandan Çık" : "Tam Ekran"} className="p-3 bg-transparent text-gray-600 dark:text-gray-400 font-semibold rounded-full border-2 border-gray-400 dark:border-gray-500 hover:bg-gray-400 hover:text-white dark:hover:bg-gray-500 dark:hover:text-gray-900 transition-colors duration-300">
+                            {isFullScreen ? <FullscreenExitIcon className="w-6 h-6" /> : <FullscreenEnterIcon className="w-6 h-6" />}
+                        </button>
+                        </div>
                         
                         {/* Text Buttons Container */}
-                        <div className="flex w-full max-w-sm flex-col items-stretch space-y-4">
+                        <div className="flex w-full max-w-sm flex-col items-stretch space-y-4 md:order-1 md:w-auto md:flex-row md:space-y-0 md:space-x-4">
                             <button onClick={() => setInfoModalOpen(true)} className="px-6 py-3 bg-transparent text-teal-600 dark:text-teal-400 font-semibold rounded-lg border-2 border-teal-600 dark:border-teal-400 hover:bg-teal-600 hover:text-white dark:hover:bg-teal-400 dark:hover:text-gray-900 transition-colors duration-300">
                                 Uygulamayı Tanı
                             </button>
@@ -533,6 +536,23 @@ const App: React.FC = () => {
                             </div>
                             <div className="p-6 overflow-y-auto space-y-8 text-gray-700 dark:text-gray-300 leading-relaxed">
                                 <section>
+                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Yeni Özellikler</h3>
+                                    <ul className="space-y-3">
+                                        <li className="flex items-start">
+                                            <MicIcon className="w-6 h-6 text-teal-500 flex-shrink-0 mt-1 mr-3" />
+                                            <div>
+                                                <strong>Sesle Ayet Bulma:</strong> Anasayfadaki <MicIcon className="w-5 h-5 inline-block mx-1" /> ikonuna tıklayarak Kur'an'dan bir ayet okuyun. Yapay zeka, okuduğunuz ayeti anında tespit eder ve sizi Kur'an Okuyucu'da doğrudan o ayete götürmeyi teklif eder.
+                                            </div>
+                                        </li>
+                                        <li className="flex items-start">
+                                            <FullscreenEnterIcon className="w-6 h-6 text-teal-500 flex-shrink-0 mt-1 mr-3" />
+                                            <div>
+                                                <strong>Tam Ekran Modu:</strong> Anasayfadaki <FullscreenEnterIcon className="w-5 h-5 inline-block mx-1" /> ikonu ile uygulamayı tüm ekranı kaplayacak şekilde kullanarak daha odaklanmış bir deneyim yaşayabilirsiniz.
+                                            </div>
+                                        </li>
+                                    </ul>
+                                </section>
+                                <section>
                                     <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Yapay Zeka Destekli Araştırma Modülleri</h3>
                                     <ul className="list-disc list-inside space-y-3">
                                         <li><strong>Dua & Zikir Arama:</strong> Bir konu (örn: "vesvese için zikir") veya durum (örn: "tuvalete girerken") hakkında Sünnet'ten duaları ve zikirleri aratın. Yapay zeka, duanın Arapça aslını, Latin harfleriyle okunuşunu, Türkçe anlamını, ne zaman okunacağını ve kaynak hadis/ayetini size sunar.</li>
@@ -573,13 +593,36 @@ const App: React.FC = () => {
                                 </section>
                                 <section>
                                     <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Ortak Özellikler</h3>
-                                    <ul className="list-disc list-inside space-y-2">
-                                        <li><strong>Geçmiş ve Paylaşım:</strong> Tüm araştırma modüllerinde `Geçmiş` paneli bulunur. Önceki aramalarınızı yeniden adlandırabilir, silebilir veya `Paylaş` ikonuyla kısa bir paylaşım linki oluşturabilirsiniz. Bu linki bir arkadaşınıza gönderdiğinizde, linke tıklayan kişi doğrudan sizin gördüğünüz cevabı kendi ekranında görür ve bu arama kendi geçmişine de eklenir.</li>
-                                        <li><strong>Yedekle & Geri Yükle:</strong> Anasayfadaki bu özellik ile tüm uygulama verilerinizi (geçmişler, ayarlar, kıraat ilerlemesi) tek bir koda dönüştürüp yedekleyebilirsiniz. Bu kodu kullanarak verilerinizi başka bir cihaza kolayca aktarabilirsiniz. <strong className="text-red-500">Uyarı:</strong> Geri yükleme, mevcut verilerin üzerine yazar.</li>
-                                        <li>
-                                            <strong>Lügat (Sözlük) Aracı:</strong> Ekranın bir köşesinde sürekli duran, üzerinde kitap ikonu olan bir baloncuk göreceksiniz. Bu balonu basılı tutarak ekranın istediğiniz yerine sürükleyebilir ve balona tıklayarak açılan pencereye anlamını merak ettiğiniz kelimeyi yazıp aratabilirsiniz. <strong className="text-amber-600 dark:text-amber-400">Yeni:</strong> Lügat'ta aradığınız kelimeler artık otomatik olarak kaydedilir. Uygulamanın diğer bölümlerinde (Meal, Hadis, Fıkıh, Risale metinleri) bu kelimelere denk geldiğinizde, kelimelerin altı noktalı bir çizgiyle işaretlenir. Farenizi bu kelimenin üzerine getirdiğinizde, lügat anlamı anında küçük bir pencerede belirir, böylece okuma akışınız bozulmaz.
+                                    <ul className="space-y-4">
+                                        <li className="flex items-start">
+                                            <ShareIcon className="w-6 h-6 text-teal-500 flex-shrink-0 mt-1 mr-3" />
+                                            <div>
+                                                <strong>Geçmiş ve Paylaşım:</strong> Tüm araştırma modüllerinde `Geçmiş` paneli bulunur. Önceki aramalarınızı yeniden adlandırabilir, silebilir veya <ShareIcon className="w-5 h-5 inline-block mx-1" /> ikonuyla kısa bir paylaşım linki oluşturabilirsiniz. Bu linki bir arkadaşınıza gönderdiğinizde, linke tıklayan kişi doğrudan sizin gördüğünüz cevabı kendi ekranında görür ve bu arama kendi geçmişine de eklenir.
+                                            </div>
                                         </li>
-                                        <li><strong>Tema Seçimi:</strong> Anasayfadaki Ay/Güneş ikonuyla açık ve koyu tema arasında geçiş yapabilirsiniz.</li>
+                                         <li className="flex items-start">
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6 text-teal-500 flex-shrink-0 mt-1 mr-3"><path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5v6m3-3H9m4.06-7.19-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" /></svg>
+                                             <div>
+                                                <strong>Yedekle & Geri Yükle:</strong> Anasayfadaki bu özellik ile tüm uygulama verilerinizi (geçmişler, ayarlar, kıraat ilerlemesi) tek bir koda dönüştürüp yedekleyebilirsiniz. Bu kodu kullanarak verilerinizi başka bir cihaza kolayca aktarabilirsiniz. <strong className="text-red-500">Uyarı:</strong> Geri yükleme, mevcut verilerin üzerine yazar.
+                                             </div>
+                                        </li>
+                                        <li className="flex items-start">
+                                            <BookOpenIcon className="w-6 h-6 text-teal-500 flex-shrink-0 mt-1 mr-3" />
+                                            <div>
+                                                <strong>Lügat (Sözlük) Aracı:</strong> Ekranın bir köşesinde sürekli duran <span className="inline-block align-middle w-6 h-6 bg-teal-600 text-white rounded-full p-1 mx-1"><BookOpenIcon className="w-full h-full" /></span> ikonlu bir baloncuk göreceksiniz. Bu balonu basılı tutarak ekranın istediğiniz yerine sürükleyebilir ve balona tıklayarak açılan pencereye anlamını merak ettiğiniz kelimeyi yazıp aratabilirsiniz. <strong className="text-amber-600 dark:text-amber-400">Yeni:</strong> Lügat'ta aradığınız kelimeler artık otomatik olarak kaydedilir. Uygulamanın diğer bölümlerinde (Meal, Hadis, Fıkıh, Risale metinleri) bu kelimelere denk geldiğinizde, kelimelerin altı noktalı bir çizgiyle işaretlenir. Farenizi bu kelimenin üzerine getirdiğinizde, lügat anlamı anında küçük bir pencerede belirir, böylece okuma akışınız bozulmaz.
+                                            </div>
+                                        </li>
+                                        <li className="flex items-start">
+                                            <div className="flex-shrink-0 mt-1 mr-3">
+                                                <div className="inline-flex items-center space-x-1 p-1 rounded-full bg-gray-200 dark:bg-gray-700">
+                                                    <SunIcon className="w-5 h-5 text-yellow-500" />
+                                                    <MoonIcon className="w-5 h-5 text-blue-400" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <strong>Tema Seçimi:</strong> Anasayfadaki Ay/Güneş <div className="inline-flex items-center space-x-1 mx-1"><SunIcon className="w-5 h-5 text-yellow-500" /><span>/</span><MoonIcon className="w-5 h-5 text-blue-400" /></div> ikonuyla açık ve koyu tema arasında geçiş yapabilirsiniz.
+                                            </div>
+                                        </li>
                                     </ul>
                                 </section>
                             </div>
