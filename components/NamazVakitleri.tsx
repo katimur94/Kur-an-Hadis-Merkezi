@@ -235,7 +235,8 @@ const NamazVakitleri: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
             const prayerTimesToday = Object.entries(times)
                 .filter(([name]) => ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'].includes(name))
                 .map(([name, time]) => {
-                    const [h, m] = time.split(':').map(Number);
+                    // FIX: Explicitly cast 'time' to string to resolve 'unknown' type error.
+                    const [h, m] = (time as string).split(':').map(Number);
                     const prayerDate = new Date();
                     prayerDate.setHours(h, m, 0, 0);
                     return { name, date: prayerDate };
