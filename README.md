@@ -22,38 +22,43 @@ Platform, her biri güçlü yeteneklere sahip modüllerden oluşur:
 
 #### 🕋 Kur'an-ı Kerim Okuyucu
 * **İki Farklı Görünüm:** Geleneksel Mushaf düzeni ile her ayetin altında Türkçe mealinin yer aldığı "Meal Görünümü" arasında geçiş yapın.
-* **Gelişmiş Ses Oynatıcı:** Tek bir ayeti, sayfayı, sureyi veya bütün bir cüzü dinleyin. Okunan ayet canlı olarak vurgulanır ve sayfa otomatik olarak ilerler.
+* **Fortschrittlicher Audio-Player:** Höre einzelne Verse, Seiten, Suren oder ganze Cüz. Der aktuell gelesene Vers wird live hervorgehoben und die Seite blättert automatisch um.
 * **Kişiselleştirme:** Dilediğiniz kâriyi, Arapça metin fontunu ve yazı tipi boyutunu kendi zevkinize göre ayarlayın.
 
 #### 🕌 Kıraat Asistanı (Tecvid & Telaffuz)
-* **Ses Tanıma:** Kur'an okumanızı doğrudan tarayıcı üzerinden kaydedin.
+* **Spracherkennung:** Nimm deine Koranrezitation direkt im Browser auf.
 * **Canlı Geri Bildirim:** Doğru telaffuz ettiğiniz kelimeler okuma esnasında anlık olarak işaretlenir.
 * **Yapay Zeka ile Hata Analizi:** Kayıt sonrası yapay zeka, okuyuşunuzu analiz ederek tecvid ve telaffuz hatalarını tespit eder.
 * **Detaylı Düzeltmeler:** Hatalı kelimelere tıklayarak hatanın ne olduğunu, nasıl düzeltileceğini ve ilgili tecvid kuralını öğrenin.
 
 #### 📚 Yapay Zeka ile Hadis Arama
-* **Konu Odaklı Arama:** Merak ettiğiniz bir konuyla ilgili hadisleri yapay zeka yardımıyla bulun.
-* **Fıkıh Analizi:** Bulunan bir hadise tıklayarak, o hadis özelinde dört büyük mezhebin fıkhî yorumlarını ve hükümlerini kaynaklarıyla birlikte inceleyin.
+* **Themenbasierte Suche:** Finde relevante Hadithe zu jedem Thema mit Hilfe der KI.
+* **Fiqh-Analyse:** Klicke auf einen Hadith, um eine KI-generierte Analyse der vier großen Rechtsschulen (Mezhep) zu diesem spezifischen Hadith zu erhalten.
 
 #### ⚖️ Fıkıh Soru & Cevap
 * **Detaylı Cevaplar:** Fıkhî sorularınıza; özet, dört mezhebin görüşleri, ilgili ayet ve hadisler gibi bölümleri içeren, kaynaklı ve yapılandırılmış cevaplar alın.
-* **Cevabı Dışa Aktarma:** Aldığınız cevapları kolayca paylaşmak için resim formatında (.png) indirin.
+* **Export-Funktion:** Lade die Antworten als ansprechende Bildkarten herunter, um sie einfach zu teilen.
 
 #### 📜 Risale-i Nur'da Ara
-* **Bağlamsal Arama:** Sorularınıza doğrudan Risale-i Nur Külliyatı'ndan, yapay zeka destekli ve kaynaklı cevaplar bulun.
-* **Sunum Olarak İndirme:** Arama sonuçlarını görsel olarak zengin bir sunum kartı olarak indirin.
+* **Kontextbezogene Suche:** Erhalte KI-gestützte Antworten auf deine Fragen direkt aus dem Risale-i Nur Külliyatı.
+* **Präsentations-Download:** Lade die Ergebnisse als schön formatierte Präsentationskarte herunter.
 
-#### 🌙 Namaz Vakitleri
-* **Otomatik ve Manuel Konum:** Bulunduğunuz konuma göre veya manuel olarak aradığınız herhangi bir yer için namaz vakitlerini görüntüleyin.
-* **Geri Sayım:** Bir sonraki namaz vaktine kalan süreyi anlık olarak takip edin.
-* **Takvim:** Miladi, Rumi ve Hicri takvim bilgilerini bir arada görün.
+#### 🤲 Dua & Zikir Rehberi (Yeni!)
+* **Duruma Özel Arama:** "Yemekten sonra okunacak dua" gibi duruma özel sorgularla Sünnet'ten duaları ve zikirleri yapay zeka ile bulun.
+* **Kapsamlı Sonuçlar:** Her dua için Arapça metin, Latin harfleriyle okunuş, Türkçe anlam, kullanım bağlamı ve orijinal kaynaklarını (Ayet, Hadis vb.) bir arada görüntüleyin.
+* **Çoklu Dışa Aktarma:** Duaları metin olarak kopyalayın, standart bir cevap kartı veya şık bir sunum kartı olarak indirin.
+
+#### 🌙 Namaz Vakitleri (Gebetszeiten)
+* **Automatische & Manuelle Ortung:** Finde Gebetszeiten für deinen aktuellen Standort oder suche manuell nach jedem beliebigen Ort.
+* **Countdown:** Sieh auf einen Blick die verbleibende Zeit bis zum nächsten Gebet.
+* **Kalender:** Anzeige des Datums nach Miladi, Rumi und Hicri.
 
 #### 🌐 Ortak Özellikler
-* **Lügat (Sözlük):** Ekranın köşesinde sürekli duran, sürükle-bırak özellikli yapay zeka destekli bir sözlük aracı.
-* **Karanlık Mod:** Göz yormayan bir arayüz için karanlık tema seçeneği.
-* **Yedekle & Geri Yükle:** Tüm uygulama verilerinizi (geçmiş, ayarlar, ilerleme) tek bir kod ile yedekleyin ve başka bir cihaza kolayca aktarın.
-* **Paylaşım Özelliği:** Arama sonuçlarını ve namaz vakitlerini sıkıştırılmış özel bir link ile arkadaşlarınızla paylaşın.
-* **Lokal Depolama:** Tüm verileriniz güvenli ve gizli bir şekilde tarayıcınızda saklanır, herhangi bir üyelik gerektirmez.
+* **Lügat (Wörterbuch):** Ein schwebendes, KI-gestütztes Wörterbuch, das jederzeit verfügbar ist.
+* **Karanlık Mod:** Ein augenschonendes dunkles Design ist verfügbar.
+* **Backup & Wiederherstellung:** Exportiere alle deine Daten (Verläufe, Fortschritte, Einstellungen) und importiere sie auf einem anderen Gerät.
+* **Teilen-Funktion:** Teile Suchergebnisse und Gebetszeiten einfach über einen komprimierten Link.
+* **Lokale Speicherung:** Alle deine Daten werden sicher und privat in deinem Browser gespeichert, es ist kein Login erforderlich.
 
 ---
 
