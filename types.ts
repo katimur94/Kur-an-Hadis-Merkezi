@@ -141,3 +141,18 @@ export interface RisaleResponse {
     relatedPointsTitle: string; // e.g., "İhlas Risalesi'nin Dört Düsturu"
     relatedPoints: RisalePoint[];
 }
+
+// --- Dua & Zikir Search Types ---
+
+export interface DuaSourceInfo {
+    sourceText: string; // e.g., "Sahih-i Buhari, Vudu, 10" or "Risale-i Nur, Lem'alar"
+    sourceContent: string; // The actual text of the hadith, ayah, or excerpt
+}
+
+export interface DuaResponse {
+    arabicText: string;
+    transliteration: string;
+    turkishMeaning: string;
+    usageContext: string;
+    sources: DuaSourceInfo[];
+}
