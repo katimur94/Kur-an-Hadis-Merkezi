@@ -111,6 +111,27 @@ export const getSurahDetailForPageJump = async (surahNumber: number): Promise<{ 
     }
 };
 
+export const getAyahDetails = async (surahNumber: number, ayahInSurah: number): Promise<{ page: number, arabicText: string, number: number }> => {
+    const cacheKey = `ayahDetails_${surahNumber}_${ayahInSurah}`;
+    if (cache.has(cacheKey)) {
+        return cache.get(cacheKey);
+    }
+    try {
+        const response = await axios.get(`${API_BASE_URL}/ayah/${surahNumber}:${ayahInSurah}`);
+        const ayahData = response.data.data;
+        const result = {
+            page: ayahData.page,
+            arabicText: ayahData.text,
+            number: ayahData.number, // This is the overall Ayah number
+        };
+        cache.set(cacheKey, result);
+        return result;
+    } catch (error) {
+        console.error(`Error fetching details for Ayah ${surahNumber}:${ayahInSurah}`, error);
+        throw new Error(`Failed to fetch details for Ayah ${surahNumber}:${ayahInSurah}`);
+    }
+};
+
 const createPlaylistFromAyahs = (ayahs: any[]): PlaylistItem[] => {
     return ayahs
         .map(ayah => ({
