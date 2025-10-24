@@ -120,7 +120,7 @@ const PeygamberlerTarihi: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) =>
     const [presentationData, setPresentationData] = useState<GeneratedContent | null>(null);
     
     // Refs
-    const ai = useRef(new GoogleGenAI({ apiKey: process.env.API_KEY as string }));
+    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
     const presentationRef = useRef<HTMLDivElement>(null);
 
     // Effects
