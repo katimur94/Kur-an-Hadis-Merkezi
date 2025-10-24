@@ -95,7 +95,7 @@ const App: React.FC = () => {
     const [initialQuranPage, setInitialQuranPage] = useState<number | null>(null);
     const [highlightAyah, setHighlightAyah] = useState<number | null>(null);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
-    const ai = useRef(new GoogleGenAI({ apiKey: process.env.API_KEY as string }));
+    const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
 
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
