@@ -6,14 +6,15 @@ import QuranRecitationChecker from './components/QuranRecitationChecker';
 import FiqhChat from './components/FiqhChat';
 import RisaleSearch from './components/RisaleSearch';
 import NamazVakitleri from './components/NamazVakitleri';
-import DuaSearch from './components/DuaSearch'; // Import the new component
+import DuaSearch from './components/DuaSearch';
+import PeygamberlerTarihi from './components/PeygamberlerTarihi'; // Import the new component
 import { LugatContextProvider } from './components/Lugat';
 import { getAyahDetails } from './services/api';
 import { GoogleGenAI, Type } from "@google/genai";
 import Spinner from './components/Spinner';
 
 
-type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh' | 'risale' | 'namaz' | 'dua';
+type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh' | 'risale' | 'namaz' | 'dua' | 'peygamberler';
 
 // --- Speech Recognition Types (for cross-browser compatibility) ---
 interface SpeechRecognition extends EventTarget {
@@ -94,7 +95,7 @@ const App: React.FC = () => {
     const [initialQuranPage, setInitialQuranPage] = useState<number | null>(null);
     const [highlightAyah, setHighlightAyah] = useState<number | null>(null);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
-    const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
+    const ai = useRef(new GoogleGenAI({ apiKey: process.env.API_KEY as string }));
 
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
@@ -404,6 +405,8 @@ const App: React.FC = () => {
         content = <NamazVakitleri onGoHome={goHome} />;
     } else if (currentView === 'dua') {
         content = <DuaSearch onGoHome={goHome} />;
+    } else if (currentView === 'peygamberler') {
+        content = <PeygamberlerTarihi onGoHome={goHome} />;
     } else {
         content = (
             <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center p-4 text-gray-800 dark:text-gray-200">
@@ -445,6 +448,10 @@ const App: React.FC = () => {
                         <button onClick={() => navigateTo('dua')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
                             <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Dua & Zikir Arama</h2>
                             <p className="text-gray-600 dark:text-gray-300">Sünnet'ten duaları ve zikirleri anlamları, okunuşları ve kaynaklarıyla bulun.</p>
+                        </button>
+                        <button onClick={() => navigateTo('peygamberler')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
+                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Peygamberler Tarihi</h2>
+                            <p className="text-gray-600 dark:text-gray-300">Peygamberlerin hayatını, önemli olayları ve zaman çizelgesini interaktif olarak keşfedin.</p>
                         </button>
                     </div>
                      <div className="mt-8 flex w-full flex-col items-center space-y-4 px-4 md:flex-row md:justify-center md:space-x-8 md:space-y-0">
@@ -559,6 +566,15 @@ const App: React.FC = () => {
                                         <li><strong>Hadis Araştırma:</strong> Bir konu (örn: "sadakanın fazileti") hakkında hadisleri kaynaklarıyla aratın. <strong className="text-amber-600 dark:text-amber-400">Önemli:</strong> Listelenen bir hadise tıkladığınızda, yapay zeka o hadis özelinde dört büyük mezhep imamının fıkhi yorumlarını ve hükümlerini kaynaklarıyla birlikte size sunar.</li>
                                         <li><strong>Fıkıh Soru & Cevap:</strong> Fıkhi bir soru sorun (örn: "Seferi namazı nasıl kılınır?"). Yapay zeka, sorunuza dört mezhebin görüşlerini, delilleri olan ayet ve hadisleri, ve her bilginin kaynağını içeren yapılandırılmış, detaylı bir cevap oluşturur. <strong className="text-amber-600 dark:text-amber-400">Yeni:</strong> "İslam'ın şartları" veya "Namazın şartları" gibi temel konuları sorduğunuzda, cevaplar her bir maddeyi ayrı ayrı inceleyebileceğiniz, tıklanarak açılan interaktif bir liste formatında sunulur.</li>
                                         <li><strong>Risale-i Nur'da Ara:</strong> Merak ettiğiniz bir konuyu (örn: "Şükür hakikati") sorun. Yapay zeka, Risale-i Nur Külliyatı'ndan konunun özetini, ilgili bahisleri ve temel prensipleri (düsturlar, esaslar) kaynaklarıyla birlikte derleyerek sunar.</li>
+                                    </ul>
+                                </section>
+                                 <section>
+                                    <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Peygamberler Tarihi</h3>
+                                    <ul className="list-disc list-inside space-y-2">
+                                        <li><strong>İnteraktif Zaman Çizelgesi:</strong> Peygamber seçin ve hayatındaki önemli bir döneme gitmek için zaman çizelgesini kullanın.</li>
+                                        <li><strong>Yapay Zeka ile Bilgi Üretimi:</strong> Seçtiğiniz peygamber ve yıl için önemli bir olayı, Kur'an, Hadis ve Siyer kaynaklarından delilleriyle birlikte öğrenin.</li>
+                                        <li><strong>Detaylı Şecere:</strong> Peygamberlerin soy ağacını, atalarını ve çocuklarını inceleyerek peygamberlik zincirini takip edin.</li>
+                                        <li><strong>Görsel Paylaşım:</strong> Öğrendiğiniz olayları, kaynaklarıyla birlikte estetik bir sunum kartı olarak indirin ve sosyal medyada paylaşın.</li>
                                     </ul>
                                 </section>
                                  <section>
