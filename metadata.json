@@ -2,6 +2,7 @@
   "name": "Dijital Medrese",
   "description": "Yapay zeka destekli kişisel ilim rehberiniz. Kur'an okuyun, hadis araştırın, kıraatinizi geliştirin ve fıkıh öğrenin.",
   "requestFramePermissions": [
-    "microphone"
+    "microphone",
+    "geolocation"
   ]
 }
