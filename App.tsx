@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+// FIX: Corrected the import statement for React and its hooks.
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as pako from 'pako';
+import axios from 'axios';
 import QuranReader from './components/QuranReader';
 import HadithSearch from './components/HadithSearch';
 import QuranRecitationChecker from './components/QuranRecitationChecker';
@@ -10,11 +12,46 @@ import DuaSearch from './components/DuaSearch';
 import PeygamberlerTarihi from './components/PeygamberlerTarihi'; // Import the new component
 import { LugatContextProvider } from './components/Lugat';
 import { getAyahDetails } from './services/api';
+// FIX: Added 'Type' to the import from "@google/genai" to be used in the response schema.
 import { GoogleGenAI, Type } from "@google/genai";
 import Spinner from './components/Spinner';
+import type { HadithResult, SourceInfo } from './types';
 
 
 type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh' | 'risale' | 'namaz' | 'dua' | 'peygamberler';
+
+// --- Dashboard Types ---
+interface PrayerData {
+    times: { [key: string]: string };
+    nextPrayerName: string;
+    timeRemaining: string;
+}
+
+interface AyetInspiration {
+    type: 'Ayet';
+    arabicText: string;
+    text: string;
+    source: string;
+    surahNumber: number;
+    ayahInSurah: number;
+}
+interface HadisInspiration {
+    type: 'Hadis';
+    arabicText: string;
+    text: string; // This is the turkishText for display
+    source: string;
+    narrator: string;
+    sourceDetails: SourceInfo;
+}
+type Inspiration = AyetInspiration | HadisInspiration;
+
+interface ContinueItem {
+    key: string;
+    label: string;
+    sublabel: string;
+    icon: React.ReactNode;
+    action: () => void;
+}
 
 // --- Speech Recognition Types (for cross-browser compatibility) ---
 interface SpeechRecognition extends EventTarget {
@@ -60,9 +97,10 @@ declare global {
   }
 }
 
+// --- ICONS ---
 const CloseIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>);
 const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>);
-const CopyIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m9.375 0-9.375 0" /></svg>);
+const CopyIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m9.375 0-9.375 0" /></svg>);
 const SunIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v2.25m6.364.386-1.591 1.591M21 12h-2.25m-.386 6.364-1.591-1.591M12 18.75V21m-4.95-4.243-1.591 1.591M5.25 12H3m4.243-4.95L6.343 6.343M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z" /></svg>);
 const MoonIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25c0 5.385 4.365 9.75 9.75 9.75 2.733 0 5.24-.992 7.152-2.644Z" /></svg>);
 const FullscreenEnterIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15" /></svg>);
@@ -70,6 +108,13 @@ const FullscreenExitIcon: React.FC<{ className?: string }> = ({ className }) => 
 const MicIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m12 0v-1.5a6 6 0 0 0-12 0v1.5m6 7.5a6 6 0 0 0 3-5.625M12 12.75a6 6 0 0 1-3-5.625" /><path strokeLinecap="round" strokeLinejoin="round" d="M7.5 12a4.5 4.5 0 0 1 9 0v1.5a4.5 4.5 0 0 1-9 0V12Z" /></svg>);
 const BookOpenIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18a8.967 8.967 0 0 0-6 2.292m0-14.25v14.25" /></svg>);
 const ShareIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.186 2.25 2.25 0 0 0-3.933 2.186Z" /></svg>);
+const SparklesIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" /></svg>);
+const ChatBubbleLeftRightIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193l-3.72 3.72a.75.75 0 0 1-1.06 0l-3.72-3.72A2.25 2.25 0 0 1 9 16.5v-4.286c0-.97.616-1.813 1.5-2.097m6.75 0a2.25 2.25 0 0 0-2.25-2.25H9a2.25 2.25 0 0 0-2.25 2.25m6.75 0c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193l-3.72 3.72a.75.75 0 0 1-1.06 0l-3.72-3.72A2.25 2.25 0 0 1 9 16.5v-4.286c0-.97.616-1.813 1.5-2.097" /></svg>);
+const ClockIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>);
+const ChevronRightIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>);
+const HandRaisedIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672 13.684 16.6m0 0-2.51 2.225.569-9.47 5.227 7.917-3.286-.672ZM12 2.25V4.5m5.832.168-1.757 1.757M12 21.75v-2.25m-5.832.168 1.757-1.757M4.168 12H6.42m12.16 0h2.252m-5.832 5.832 1.757 1.757M6.168 6.168 4.41 4.41m1.757 1.757 1.757 1.757M12 6.75v2.25m-1.757 3.433 1.757-1.757" /></svg>);
+const GlobeAltIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c.24 0 .468.02.69.058M12 3a9.004 9.004 0 0 1 8.716 6.747M12 3a9.004 9.004 0 0 0-8.716 6.747M12 3c-.24 0-.468.02-.69.058m18 9c0 5.14-4.2 9.29-9.428 9.29-5.228 0-9.428-4.15-9.428-9.29s4.2-9.29 9.428-9.29C17.8 2.71 22 6.86 22 12Z" /></svg>);
+
 
 const App: React.FC = () => {
     const [currentView, setCurrentView] = useState<View>('home');
@@ -96,6 +141,17 @@ const App: React.FC = () => {
     const [highlightAyah, setHighlightAyah] = useState<number | null>(null);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
     const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
+
+    // --- Dashboard State ---
+    const [prayerData, setPrayerData] = useState<PrayerData | null>(null);
+    const [prayerLocation, setPrayerLocation] = useState<string | null>(null);
+    const [isPrayerLoading, setIsPrayerLoading] = useState(true);
+    const [prayerMessage, setPrayerMessage] = useState<string | null>(null);
+    const [inspiration, setInspiration] = useState<Inspiration | null>(null);
+    const [isInspirationLoading, setIsInspirationLoading] = useState(true);
+    const [isNavigating, setIsNavigating] = useState(false);
+    const [continueItems, setContinueItems] = useState<ContinueItem[]>([]);
+    const prayerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
@@ -160,9 +216,248 @@ const App: React.FC = () => {
         }
     };
 
+    // --- Dashboard Data Fetching ---
+    const fetchPrayerTimes = useCallback(async (lat: number, lon: number) => {
+        try {
+            const geoResponse = await axios.get(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=tr`);
+            const address = geoResponse.data.address;
+            const city = address.city || address.town || address.village || address.state;
+            const country = address.country;
+            setPrayerLocation(`${city}, ${country}`);
+
+            const timesResponse = await axios.get(`https://api.aladhan.com/v1/timings`, { params: { latitude: lat, longitude: lon, method: 3 } });
+            if (timesResponse.data.code === 200) {
+                const times = timesResponse.data.data.timings;
+                
+                const prayerNameMapping: { [key: string]: string } = { Fajr: 'Sabah', Dhuhr: 'Öğle', Asr: 'İkindi', Maghrib: 'Akşam', Isha: 'Yatsı' };
+                
+                const allPrayerEvents = Object.entries(times)
+                    .filter(([name]) => prayerNameMapping[name])
+                    .map(([name, time]) => {
+                        const [h, m] = (time as string).split(':').map(Number);
+                        const prayerDate = new Date();
+                        prayerDate.setHours(h, m, 0, 0);
+                        return { name, date: prayerDate, displayName: prayerNameMapping[name] };
+                    });
+
+                const [fajrH, fajrM] = (times.Fajr as string).split(':').map(Number);
+                const fajrTomorrow = new Date();
+                fajrTomorrow.setDate(fajrTomorrow.getDate() + 1);
+                fajrTomorrow.setHours(fajrH, fajrM, 0, 0);
+                allPrayerEvents.push({ name: 'Fajr', date: fajrTomorrow, displayName: 'Sabah' });
+                
+                allPrayerEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+                const calculateCountdown = () => {
+                    const now = new Date();
+                    const nextPrayer = allPrayerEvents.find(p => p.date > now);
+                    
+                    const passedPrayers = allPrayerEvents.filter(p => p.date <= now);
+                    const lastPassedPrayer = passedPrayers.length > 0 ? passedPrayers[passedPrayers.length - 1] : null;
+
+                    let message: string | null = null;
+                    
+                    if (lastPassedPrayer) {
+                        const diffSinceMs = now.getTime() - lastPassedPrayer.date.getTime();
+                        const diffSinceMins = diffSinceMs / 60000;
+                        if (diffSinceMins < 60) {
+                             message = `Vakit girdi. Peygamberimiz (s.a.v.) bize namazı vaktinde kılmayı tavsiye ediyor.`;
+                        }
+                    }
+
+                    if (nextPrayer) {
+                        const diffMs = nextPrayer.date.getTime() - now.getTime();
+                        const diffMins = diffMs / 60000;
+                        if (diffMins < 30) {
+                            message = `Vakit yaklaşıyor, hazırlansan iyi olur.`;
+                        }
+                        
+                        const hours = Math.floor(diffMs / 3600000);
+                        const minutes = Math.floor((diffMs % 3600000) / 60000);
+                        const seconds = Math.floor((diffMs % 60000) / 1000);
+
+                        setPrayerData({
+                            times,
+                            nextPrayerName: nextPrayer.displayName,
+                            timeRemaining: `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+                        });
+                    }
+                     setPrayerMessage(message);
+                };
+                
+                calculateCountdown();
+                if (prayerIntervalRef.current) clearInterval(prayerIntervalRef.current);
+                prayerIntervalRef.current = setInterval(calculateCountdown, 1000);
+            }
+        } catch (e) {
+            console.error("Prayer times fetch error:", e);
+        } finally {
+            setIsPrayerLoading(false);
+        }
+    }, []);
+
+    const fetchInspiration = useCallback(async () => {
+        try {
+            const cached = sessionStorage.getItem('dailyInspiration');
+            const today = new Date().toDateString();
+            if (cached) {
+                const { date, data } = JSON.parse(cached);
+                if (date === today) {
+                    setInspiration(data);
+                    setIsInspirationLoading(false);
+                    return;
+                }
+            }
+            const prompt = `Bana Türkçe, ilham verici bir Kur'an ayeti VEYA sahih bir Hadis-i Şerif ver. Cevabın SADECE JSON formatında olmalı ve başka hiçbir metin içermemeli.
+
+- Eğer Ayet seçersen, format şu olmalı:
+{"type": "Ayet", "arabicText": "...", "text": "...", "source": "Bakara, 255", "surahNumber": 2, "ayahInSurah": 255}
+
+- Eğer Hadis seçersen, format şu olmalı:
+{"type": "Hadis", "arabicText": "...", "text": "...", "source": "Buhari, İman, 1", "narrator": "...", "sourceDetails": { "book": "Sahih-i Buhari", "chapter": "İman", "hadithNumber": "1" }}
+
+'text' alanı her zaman Türkçe anlamı içermelidir.`;
+            
+            const response = await ai.current.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+            });
+            
+            let jsonString = response.text;
+            const match = jsonString.match(/```(json)?\s*([\s\S]*?)\s*```/);
+            if (match && match[2]) {
+                jsonString = match[2];
+            }
+            jsonString = jsonString.trim();
+
+            const data = JSON.parse(jsonString);
+            setInspiration(data);
+            sessionStorage.setItem('dailyInspiration', JSON.stringify({ date: today, data }));
+        } catch (e) {
+            console.error("Inspiration fetch error:", e);
+             setInspiration({
+                type: 'Ayet',
+                arabicText: 'ٱللَّهُ لَآ إِلَٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ',
+                text: 'Allah, O’ndan başka ilah yoktur; diridir, her şeyin varlığı O’na bağlı ve dayalıdır.',
+                source: 'Bakara, 255',
+                surahNumber: 2,
+                ayahInSurah: 255
+            });
+        } finally {
+            setIsInspirationLoading(false);
+        }
+    }, []);
+
+    const handleInspirationClick = async () => {
+        if (!inspiration || isNavigating) return;
+
+        setIsNavigating(true);
+
+        try {
+            if (inspiration.type === 'Ayet') {
+                const details = await getAyahDetails(inspiration.surahNumber, inspiration.ayahInSurah);
+                setInitialQuranPage(details.page);
+                setHighlightAyah(details.number);
+                navigateTo('quran');
+            } else if (inspiration.type === 'Hadis') {
+                const hadithResult: HadithResult = {
+                    arabicText: inspiration.arabicText,
+                    turkishText: inspiration.text, // The main 'text' field is used as turkishText
+                    narrator: inspiration.narrator,
+                    source: inspiration.sourceDetails
+                };
+
+                const historyItem = {
+                    id: `daily-${new Date().toISOString().split('T')[0]}`,
+                    question: `Günün Hadisi: ${inspiration.source}`,
+                    customTitle: `Günün Hadisi: ${inspiration.source}`,
+                    responses: [{
+                        hadiths: [hadithResult],
+                        hasMore: false,
+                    }]
+                };
+
+                sessionStorage.setItem('importedDataFor_hadith', JSON.stringify(historyItem));
+                navigateTo('hadith');
+            }
+        } catch (err) {
+            console.error("Navigation from inspiration card failed:", err);
+            showNotification('İlgili içeriğe gidilemedi.', 'error');
+            setIsNavigating(false);
+        }
+        // NOTE: No need to set isNavigating to false on success, as the component will unmount.
+    };
+
+    const loadContinueItems = useCallback(() => {
+        const items: ContinueItem[] = [];
+        const quranPage = localStorage.getItem('quranLastPage');
+        if (quranPage) {
+            items.push({
+                key: 'quran', label: 'Kur\'an Okumaya Devam Et', sublabel: `Sayfa ${quranPage}`, icon: <BookOpenIcon className="w-5 h-5"/>,
+                action: () => { setInitialQuranPage(parseInt(quranPage)); navigateTo('quran'); }
+            });
+        }
+        const recitationPage = localStorage.getItem('recitationLastPage');
+        if (recitationPage) {
+            items.push({
+                key: 'recitation', label: 'Kıraat Alıştırması', sublabel: `Sayfa ${recitationPage}`, icon: <MicIcon className="w-5 h-5"/>,
+                action: () => { navigateTo('recitation'); }
+            });
+        }
+        try {
+            const fiqhHistory = JSON.parse(localStorage.getItem('fiqhChatHistory') || '[]');
+            if (fiqhHistory.length > 0) {
+                const lastItem = fiqhHistory[0];
+                items.push({
+                    key: 'fiqh', label: 'Son Fıkıh Sorusu', sublabel: lastItem.customTitle || lastItem.question, icon: <ChatBubbleLeftRightIcon className="w-5 h-5"/>,
+                    action: () => {
+                        sessionStorage.setItem('importedDataFor_fiqh', JSON.stringify(lastItem));
+                        navigateTo('fiqh');
+                    }
+                });
+            }
+        } catch (e) {}
+
+        setContinueItems(items.slice(0, 3));
+    }, []);
+
+
     useEffect(() => {
         handleUrlImport();
-    }, []);
+
+        // Load dashboard data only when on home view
+        if(currentView === 'home') {
+            setIsPrayerLoading(true);
+            navigator.geolocation.getCurrentPosition(
+                (position) => fetchPrayerTimes(position.coords.latitude, position.coords.longitude),
+                () => { // On error, use last known location or default
+                    const savedLocation = localStorage.getItem('namazVakitleriLocation');
+                    if(savedLocation){
+                        const loc = JSON.parse(savedLocation);
+                        // A bit of a hack to get coords again
+                        axios.get(`https://nominatim.openstreetmap.org/search?q=${loc.city},${loc.country}&format=json&limit=1`).then(res => {
+                           if(res.data && res.data.length > 0) {
+                               fetchPrayerTimes(res.data[0].lat, res.data[0].lon);
+                           } else {
+                               fetchPrayerTimes(41.0082, 28.9784); // Istanbul default
+                           }
+                        }).catch(() => fetchPrayerTimes(41.0082, 28.9784));
+                    } else {
+                        fetchPrayerTimes(41.0082, 28.9784); // Istanbul default
+                        setPrayerLocation("İstanbul, Türkiye (Varsayılan)");
+                    }
+                }
+            );
+
+            fetchInspiration();
+            loadContinueItems();
+        }
+
+        return () => {
+             if (prayerIntervalRef.current) clearInterval(prayerIntervalRef.current);
+        }
+    }, [currentView, fetchInspiration, fetchPrayerTimes, loadContinueItems]);
+
 
     useEffect(() => {
         const handleFullScreenChange = () => {
@@ -409,53 +704,122 @@ const App: React.FC = () => {
         content = <PeygamberlerTarihi onGoHome={goHome} />;
     } else {
         content = (
-            <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex flex-col items-center justify-center p-4 text-gray-800 dark:text-gray-200">
-                 {notification && (
-                    <div className={`fixed top-5 right-5 p-4 rounded-lg shadow-lg text-white z-[100] animate-fade-in ${notification.type === 'success' ? 'bg-teal-500' : 'bg-red-500'}`}>
-                        {notification.message}
+            <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+                {notification && ( <div className={`fixed top-5 right-5 p-4 rounded-lg shadow-lg text-white z-[100] animate-fade-in ${notification.type === 'success' ? 'bg-teal-500' : 'bg-red-500'}`}>{notification.message}</div> )}
+                
+                <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">
+                    <header className="text-center">
+                        <h1 className="text-5xl font-bold mb-2">Dijital Medrese</h1>
+                        <p className="text-xl text-gray-500 dark:text-gray-400">Yapay Zeka Destekli Kişisel İlim Rehberiniz</p>
+                    </header>
+                    
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                        {/* Main Content Area */}
+                        <div className="lg:col-span-3 space-y-6">
+                            {/* Prayer Times Widget */}
+                            <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg transition-all hover:shadow-xl hover:-translate-y-1">
+                                {isPrayerLoading ? <div className="h-24 flex items-center justify-center"><Spinner/></div> : prayerData ? (
+                                    <div className="text-center">
+                                        <p className="text-sm uppercase tracking-wider text-gray-500 dark:text-gray-400 capitalize">{prayerLocation || 'Konum Yükleniyor...'}</p>
+                                        <p className="text-5xl font-bold text-teal-600 dark:text-teal-400 my-1">{prayerData.nextPrayerName}</p>
+                                        <p className="text-6xl font-mono font-bold tracking-tight">{prayerData.timeRemaining}</p>
+                                        {prayerMessage && (
+                                            <p className="text-sm text-amber-600 dark:text-amber-400 mt-2 animate-pulse">{prayerMessage}</p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-center text-gray-500">Namaz vakitleri yüklenemedi.</div>
+                                )}
+                            </div>
+
+                            {/* Daily Inspiration Widget */}
+                             <button 
+                                onClick={handleInspirationClick} 
+                                disabled={isInspirationLoading || isNavigating}
+                                className="w-full text-left p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg transition-all hover:shadow-xl hover:-translate-y-1 min-h-[150px] relative disabled:opacity-70 disabled:cursor-wait"
+                            >
+                                <h2 className="text-lg font-bold text-teal-600 dark:text-teal-400 mb-2">Günün Ayeti / Hadisi</h2>
+                                {isInspirationLoading ? <div className="flex items-center justify-center pt-4"><Spinner/></div> : inspiration ? (
+                                    <div>
+                                        {inspiration.arabicText && (
+                                            <p dir="rtl" className="font-amiri text-2xl text-right mb-3 text-gray-800 dark:text-gray-200">{inspiration.arabicText}</p>
+                                        )}
+                                        <blockquote className="italic text-gray-600 dark:text-gray-300">"{inspiration.text}"</blockquote>
+                                        <p className="text-right text-sm font-semibold text-gray-500 dark:text-gray-400 mt-2">- {inspiration.source}</p>
+                                    </div>
+                                ) : (
+                                    <div className="text-center text-gray-500 pt-4">İçerik yüklenemedi.</div>
+                                )}
+                                {isNavigating && <div className="absolute inset-0 bg-white/50 dark:bg-gray-800/50 flex items-center justify-center rounded-2xl"><Spinner/></div>}
+                            </button>
+                        </div>
+
+                        {/* Side Area with Continue and Main Modules */}
+                        <div className="lg:col-span-2 space-y-6">
+                             {continueItems.length > 0 && (
+                                <div className="p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg">
+                                    <h2 className="text-lg font-bold text-teal-600 dark:text-teal-400 mb-3">Kaldığın Yerden Devam Et</h2>
+                                    <div className="space-y-3">
+                                        {continueItems.map(item => (
+                                            <button key={item.key} onClick={item.action} className="w-full flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all">
+                                                <div className="flex items-center space-x-3">
+                                                    <div className="text-teal-500">{item.icon}</div>
+                                                    <div>
+                                                        <p className="font-semibold text-left">{item.label}</p>
+                                                        <p className="text-xs text-gray-500 dark:text-gray-400 text-left truncate max-w-xs">{item.sublabel}</p>
+                                                    </div>
+                                                </div>
+                                                <ChevronRightIcon className="w-5 h-5 text-gray-400"/>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                             <div className="grid grid-cols-2 gap-4">
+                                <button onClick={() => navigateTo('quran')} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center hover:shadow-xl hover:-translate-y-1 transition-all">
+                                    <BookOpenIcon className="w-8 h-8 text-teal-500 mb-2"/>
+                                    <p className="font-bold">Kur'an Oku</p>
+                                </button>
+                                <button onClick={() => navigateTo('recitation')} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center hover:shadow-xl hover:-translate-y-1 transition-all">
+                                    <MicIcon className="w-8 h-8 text-teal-500 mb-2"/>
+                                    <p className="font-bold">Kıraat Asistanı</p>
+                                </button>
+                                <button onClick={() => navigateTo('hadith')} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center hover:shadow-xl hover:-translate-y-1 transition-all">
+                                    <SparklesIcon className="w-8 h-8 text-teal-500 mb-2"/>
+                                    <p className="font-bold">Hadis Ara</p>
+                                </button>
+                                <button onClick={() => navigateTo('fiqh')} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center hover:shadow-xl hover:-translate-y-1 transition-all">
+                                    <ChatBubbleLeftRightIcon className="w-8 h-8 text-teal-500 mb-2"/>
+                                    <p className="font-bold">Fıkıh Sor</p>
+                                </button>
+                             </div>
+                        </div>
                     </div>
-                )}
-                <header className="text-center mb-12">
-                    <h1 className="text-5xl font-bold mb-2">Dijital Medrese</h1>
-                    <p className="text-xl text-gray-500 dark:text-gray-400">Yapay Zeka Destekli Kişisel İlim Rehberiniz</p>
-                </header>
-                <main className="w-full max-w-6xl flex flex-col items-center">
-                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 w-full">
-                        <button onClick={() => navigateTo('quran')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
-                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Kur'an-ı Kerim Okuyucu</h2>
-                            <p className="text-gray-600 dark:text-gray-300">Kur'an'ı Kerim'i farklı kârilerle okuyun, dinleyin ve mealini inceleyin.</p>
-                        </button>
-                        <button onClick={() => navigateTo('hadith')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
-                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Yapay Zeka ile Hadis Ara</h2>
-                            <p className="text-gray-600 dark:text-gray-300">İlgilendiğiniz konulardaki hadisleri yapay zeka yardımıyla bulun ve fıkhi analizlerini inceleyin.</p>
-                        </button>
-                        <button onClick={() => navigateTo('recitation')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
-                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Kıraat Asistanı (Tecvid)</h2>
-                            <p className="text-gray-600 dark:text-gray-300">Ayetleri okuyun ve yapay zeka ile telaffuz ve tecvid hatalarınızı tespit edin.</p>
-                        </button>
-                        <button onClick={() => navigateTo('fiqh')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
-                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Fıkıh Soru & Cevap</h2>
-                            <p className="text-gray-600 dark:text-gray-300">Fıkhi sorularınıza dört mezhebe göre kaynaklarıyla birlikte, yapay zeka destekli cevaplar alın.</p>
-                        </button>
-                         <button onClick={() => navigateTo('risale')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
-                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Risale-i Nur'da Ara</h2>
-                            <p className="text-gray-600 dark:text-gray-300">Sorularınıza Risale-i Nur külliyatından yapay zeka destekli, kaynaklı cevaplar bulun.</p>
-                        </button>
-                         <button onClick={() => navigateTo('namaz')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
-                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Namaz Vakitleri</h2>
-                            <p className="text-gray-600 dark:text-gray-300">Bulunduğunuz konuma göre günlük namaz vakitlerini ve kalan süreyi öğrenin.</p>
-                        </button>
-                        <button onClick={() => navigateTo('dua')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
-                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Dua & Zikir Arama</h2>
-                            <p className="text-gray-600 dark:text-gray-300">Sünnet'ten duaları ve zikirleri anlamları, okunuşları ve kaynaklarıyla bulun.</p>
-                        </button>
-                        <button onClick={() => navigateTo('peygamberler')} className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 text-left">
-                            <h2 className="text-2xl font-bold text-teal-600 dark:text-teal-400 mb-2">Peygamberler Tarihi</h2>
-                            <p className="text-gray-600 dark:text-gray-300">Peygamberlerin hayatını, önemli olayları ve zaman çizelgesini interaktif olarak keşfedin.</p>
-                        </button>
+
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-500 dark:text-gray-400 mb-4 text-center">Diğer Araçlar</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <button onClick={() => navigateTo('dua')} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center justify-center space-x-3 hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                                <HandRaisedIcon className="w-6 h-6 text-teal-500"/>
+                                <span className="font-semibold">Dua & Zikir</span>
+                            </button>
+                            <button onClick={() => navigateTo('peygamberler')} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center justify-center space-x-3 hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                                <GlobeAltIcon className="w-6 h-6 text-teal-500"/>
+                                <span className="font-semibold">Peygamberler</span>
+                            </button>
+                             <button onClick={() => navigateTo('risale')} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center justify-center space-x-3 hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                                <BookOpenIcon className="w-6 h-6 text-teal-500"/>
+                                <span className="font-semibold">Risale-i Nur</span>
+                            </button>
+                             <button onClick={() => navigateTo('namaz')} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center justify-center space-x-3 hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                                <ClockIcon className="w-6 h-6 text-teal-500"/>
+                                <span className="font-semibold">Namaz Vakitleri</span>
+                            </button>
+                        </div>
                     </div>
-                     <div className="mt-8 flex w-full flex-col items-center space-y-4 px-4 md:flex-row md:justify-center md:space-x-8 md:space-y-0">
-                        {/* Icons Row on top for mobile */}
+
+                    <div className="mt-8 flex w-full flex-col items-center space-y-4 px-4 md:flex-row md:justify-center md:space-x-8 md:space-y-0">
                         <div className="flex space-x-4 md:order-2">
                             <button onClick={toggleTheme} title="Temayı Değiştir" className="p-3 bg-transparent text-gray-600 dark:text-gray-400 font-semibold rounded-full border-2 border-gray-400 dark:border-gray-500 hover:bg-gray-400 hover:text-white dark:hover:bg-gray-500 dark:hover:text-gray-900 transition-colors duration-300">
                                 {theme === 'light' ? <MoonIcon className="w-6 h-6" /> : <SunIcon className="w-6 h-6" />}
@@ -468,7 +832,6 @@ const App: React.FC = () => {
                         </button>
                         </div>
                         
-                        {/* Text Buttons Container */}
                         <div className="flex w-full max-w-sm flex-col items-stretch space-y-4 md:order-1 md:w-auto md:flex-row md:space-y-0 md:space-x-4">
                             <button onClick={() => setInfoModalOpen(true)} className="px-6 py-3 bg-transparent text-teal-600 dark:text-teal-400 font-semibold rounded-lg border-2 border-teal-600 dark:border-teal-400 hover:bg-teal-600 hover:text-white dark:hover:bg-teal-400 dark:hover:text-gray-900 transition-colors duration-300">
                                 Uygulamayı Tanı
@@ -478,10 +841,11 @@ const App: React.FC = () => {
                             </button>
                         </div>
                     </div>
-                </main>
-                <footer className="mt-12 text-center text-gray-500 dark:text-gray-400 text-sm">
-                   <p>&copy; 2025 - Timur Kalaycı. Hayır dualarınızı beklerim. Rabbim bu Site vesilesiyle ilminizi artırsın.</p>
-                </footer>
+                
+                    <footer className="mt-12 text-center text-gray-500 dark:text-gray-400 text-sm">
+                       <p>&copy; 2025 - Timur Kalaycı. Hayır dualarınızı beklerim. Rabbim bu Site vesilesiyle ilminizi artırsın.</p>
+                    </footer>
+                </div>
 
                 {isBackupModalOpen && (
                      <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 animate-fade-in" onClick={() => setBackupModalOpen(false)}>
