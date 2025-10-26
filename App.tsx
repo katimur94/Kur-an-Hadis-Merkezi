@@ -1190,7 +1190,7 @@ const App: React.FC = () => {
                                 {reciteState === 'processing' && (
                                     <>
                                         <Spinner />
-                                        <p className="text-gray-600 dark:text-gray-400 mt-4">Ayet tespit ediliyor...</p>
+                                        <p className="text-gray-600 dark:text-gray-400 mt-4">Okunan Ayet tespit ediliyor...</p>
                                     </>
                                 )}
                                 {reciteState === 'result' && identifiedAyah && (
