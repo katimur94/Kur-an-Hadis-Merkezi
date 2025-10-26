@@ -1,4 +1,3 @@
-// FIX: Corrected the import statement for React and its hooks.
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as pako from 'pako';
 import axios from 'axios';
@@ -9,16 +8,16 @@ import FiqhChat from './components/FiqhChat';
 import RisaleSearch from './components/RisaleSearch';
 import NamazVakitleri from './components/NamazVakitleri';
 import DuaSearch from './components/DuaSearch';
-import PeygamberlerTarihi from './components/PeygamberlerTarihi'; // Import the new component
+import PeygamberlerTarihi from './components/PeygamberlerTarihi';
+import Zikirmatik from './components/Zikirmatik'; // Import the new component
 import { LugatContextProvider } from './components/Lugat';
 import { getAyahDetails } from './services/api';
-// FIX: Added 'Type' to the import from "@google/genai" to be used in the response schema.
 import { GoogleGenAI, Type } from "@google/genai";
 import Spinner from './components/Spinner';
 import type { HadithResult, SourceInfo } from './types';
 
 
-type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh' | 'risale' | 'namaz' | 'dua' | 'peygamberler';
+type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh' | 'risale' | 'namaz' | 'dua' | 'peygamberler' | 'zikirmatik';
 
 // --- Dashboard Types ---
 interface PrayerData {
@@ -43,7 +42,11 @@ interface HadisInspiration {
     narrator: string;
     sourceDetails: SourceInfo;
 }
-type Inspiration = AyetInspiration | HadisInspiration;
+
+interface DailyInspiration {
+    ayet: AyetInspiration;
+    hadis: HadisInspiration;
+}
 
 interface ContinueItem {
     key: string;
@@ -113,7 +116,8 @@ const ChatBubbleLeftRightIcon: React.FC<{ className?: string }> = ({ className }
 const ClockIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>);
 const ChevronRightIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>);
 const HandRaisedIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672 13.684 16.6m0 0-2.51 2.225.569-9.47 5.227 7.917-3.286-.672ZM12 2.25V4.5m5.832.168-1.757 1.757M12 21.75v-2.25m-5.832.168 1.757-1.757M4.168 12H6.42m12.16 0h2.252m-5.832 5.832 1.757 1.757M6.168 6.168 4.41 4.41m1.757 1.757 1.757 1.757M12 6.75v2.25m-1.757 3.433 1.757-1.757" /></svg>);
-const GlobeAltIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c.24 0 .468.02.69.058M12 3a9.004 9.004 0 0 1 8.716 6.747M12 3a9.004 9.004 0 0 0-8.716 6.747M12 3c-.24 0-.468.02-.69.058m18 9c0 5.14-4.2 9.29-9.428 9.29-5.228 0-9.428-4.15-9.428-9.29s4.2-9.29 9.428-9.29C17.8 2.71 22 6.86 22 12Z" /></svg>);
+const GlobeAltIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c.24 0 .468.02.69.058M12 3a9.004 9.004 0 0 1 8.716 6.747M12 3a9.004 9.004 0 0 0-8.716-6.747M12 3c-.24 0-.468.02-.69.058m18 9c0 5.14-4.2 9.29-9.428 9.29-5.228 0-9.428-4.15-9.428-9.29s4.2-9.29 9.428-9.29C17.8 2.71 22 6.86 22 12Z" /></svg>);
+const PlusCircleIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>);
 
 
 const App: React.FC = () => {
@@ -147,7 +151,7 @@ const App: React.FC = () => {
     const [prayerLocation, setPrayerLocation] = useState<string | null>(null);
     const [isPrayerLoading, setIsPrayerLoading] = useState(true);
     const [prayerMessage, setPrayerMessage] = useState<string | null>(null);
-    const [inspiration, setInspiration] = useState<Inspiration | null>(null);
+    const [inspiration, setInspiration] = useState<DailyInspiration | null>(null);
     const [isInspirationLoading, setIsInspirationLoading] = useState(true);
     const [isNavigating, setIsNavigating] = useState(false);
     const [continueItems, setContinueItems] = useState<ContinueItem[]>([]);
@@ -296,151 +300,261 @@ const App: React.FC = () => {
         }
     }, []);
 
-    const fetchInspiration = useCallback(async () => {
+    const fetchNewInspiration = useCallback(async () => {
         try {
-            const cached = sessionStorage.getItem('dailyInspiration');
             const today = new Date().toDateString();
-            if (cached) {
-                const { date, data } = JSON.parse(cached);
-                if (date === today) {
-                    setInspiration(data);
-                    setIsInspirationLoading(false);
-                    return;
-                }
-            }
-            const prompt = `Bana Türkçe, ilham verici bir Kur'an ayeti VEYA sahih bir Hadis-i Şerif ver. Cevabın SADECE JSON formatında olmalı ve başka hiçbir metin içermemeli.
-
-- Eğer Ayet seçersen, format şu olmalı:
-{"type": "Ayet", "arabicText": "...", "text": "...", "source": "Bakara, 255", "surahNumber": 2, "ayahInSurah": 255}
-
-- Eğer Hadis seçersen, format şu olmalı:
-{"type": "Hadis", "arabicText": "...", "text": "...", "source": "Buhari, İman, 1", "narrator": "...", "sourceDetails": { "book": "Sahih-i Buhari", "chapter": "İman", "hadithNumber": "1" }}
-
-'text' alanı her zaman Türkçe anlamı içermelidir.`;
-            
             const response = await ai.current.models.generateContent({
                 model: 'gemini-2.5-flash',
-                contents: prompt,
+                contents: "Günün ilhamı için, önce belirli bir konuda (örneğin sabır, şükür, namaz, sadaka gibi) bir Kur'an ayeti seç. Ardından, SEÇTİĞİN BU AYETTEKİ KONUYU DOĞRUDAN AÇIKLAYAN, DETAYLANDIRAN VEYA UYGULAMASINI GÖSTEREN sahih bir Hadis-i Şerif bul. Ayet ve hadis arasındaki bağlantı çok güçlü ve net olmalı. Bu ikisini tek bir JSON objesi olarak, başka hiçbir açıklama yapmadan döndür. JSON objesi 'ayet' ve 'hadis' anahtarlarını içermelidir.",
+                config: {
+                    responseMimeType: "application/json",
+                    responseSchema: {
+                        type: Type.OBJECT,
+                        properties: {
+                            ayet: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    type: { type: Type.STRING },
+                                    arabicText: { type: Type.STRING },
+                                    text: { type: Type.STRING },
+                                    source: { type: Type.STRING },
+                                    surahNumber: { type: Type.INTEGER },
+                                    ayahInSurah: { type: Type.INTEGER }
+                                },
+                                required: ["type", "arabicText", "text", "source", "surahNumber", "ayahInSurah"]
+                            },
+                            hadis: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    type: { type: Type.STRING },
+                                    arabicText: { type: Type.STRING },
+                                    text: { type: Type.STRING },
+                                    source: { type: Type.STRING },
+                                    narrator: { type: Type.STRING },
+                                    sourceDetails: {
+                                        type: Type.OBJECT,
+                                        properties: {
+                                            book: { type: Type.STRING },
+                                            chapter: { type: Type.STRING },
+                                            hadithNumber: { type: Type.STRING }
+                                        },
+                                        required: ["book", "chapter", "hadithNumber"]
+                                    }
+                                },
+                                required: ["type", "arabicText", "text", "source", "narrator", "sourceDetails"]
+                            }
+                        },
+                        required: ["ayet", "hadis"]
+                    }
+                }
             });
             
-            let jsonString = response.text;
-            const match = jsonString.match(/```(json)?\s*([\s\S]*?)\s*```/);
-            if (match && match[2]) {
-                jsonString = match[2];
-            }
-            jsonString = jsonString.trim();
+            const jsonString = response.text.trim();
+            const data: DailyInspiration = JSON.parse(jsonString);
 
-            const data = JSON.parse(jsonString);
+            // Extra validation to ensure data is complete before setting state
+            if (!data || !data.ayet || !data.hadis || !data.ayet.arabicText || !data.hadis.text || !data.hadis.sourceDetails) {
+                 throw new Error("Incomplete data received from AI.");
+            }
+
             setInspiration(data);
-            sessionStorage.setItem('dailyInspiration', JSON.stringify({ date: today, data }));
+            localStorage.setItem('dailyInspiration', JSON.stringify({ date: today, data }));
+
         } catch (e) {
             console.error("Inspiration fetch error:", e);
              setInspiration({
-                type: 'Ayet',
-                arabicText: 'ٱللَّهُ لَآ إِلَٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ',
-                text: 'Allah, O’ndan başka ilah yoktur; diridir, her şeyin varlığı O’na bağlı ve dayalıdır.',
-                source: 'Bakara, 255',
-                surahNumber: 2,
-                ayahInSurah: 255
+                ayet: {
+                    type: 'Ayet',
+                    arabicText: 'ٱللَّهُ لَآ إِلَٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ',
+                    text: 'Allah, O’ndan başka ilah yoktur; diridir, her şeyin varlığı O’na bağlı ve dayalıdır.',
+                    source: 'Bakara, 255',
+                    surahNumber: 2,
+                    ayahInSurah: 255
+                },
+                hadis: {
+                    type: 'Hadis',
+                    arabicText: "مَنْ قَرَأَ آيَةَ الْكُرْسِيِّ دُبُرَ كُلِّ صَلَاةٍ مَكْتُوبَةٍ لَمْ يَمْنَعْهُ مِنْ دُخُولِ الْجَنَّةِ إِلَّا أَنْ يَمُوتَ",
+                    text: "Her kim farz namazın peşinden Ayete’l-Kürsi’yi okursa, onunla cennete girmesi arasında ölümden başka bir engel yoktur.",
+                    source: "Nesai, es-Sünenü’l-Kübra",
+                    narrator: "Ebu Ümame (r.a.)",
+                    sourceDetails: {
+                        book: "Nesai, es-Sünenü’l-Kübra",
+                        chapter: "Amelü’l-yevm ve’l-leyle",
+                        hadithNumber: "9848"
+                    }
+                }
             });
         } finally {
             setIsInspirationLoading(false);
         }
     }, []);
-
-    const handleInspirationClick = async () => {
+    
+    const handleAyetClick = async () => {
         if (!inspiration || isNavigating) return;
-
         setIsNavigating(true);
-
         try {
-            if (inspiration.type === 'Ayet') {
-                const details = await getAyahDetails(inspiration.surahNumber, inspiration.ayahInSurah);
-                setInitialQuranPage(details.page);
-                setHighlightAyah(details.number);
-                navigateTo('quran');
-            } else if (inspiration.type === 'Hadis') {
-                const hadithResult: HadithResult = {
-                    arabicText: inspiration.arabicText,
-                    turkishText: inspiration.text, // The main 'text' field is used as turkishText
-                    narrator: inspiration.narrator,
-                    source: inspiration.sourceDetails
-                };
-
-                const historyItem = {
-                    id: `daily-${new Date().toISOString().split('T')[0]}`,
-                    question: `Günün Hadisi: ${inspiration.source}`,
-                    customTitle: `Günün Hadisi: ${inspiration.source}`,
-                    responses: [{
-                        hadiths: [hadithResult],
-                        hasMore: false,
-                    }]
-                };
-
-                sessionStorage.setItem('importedDataFor_hadith', JSON.stringify(historyItem));
-                navigateTo('hadith');
-            }
+            const details = await getAyahDetails(inspiration.ayet.surahNumber, inspiration.ayet.ayahInSurah);
+            setInitialQuranPage(details.page);
+            setHighlightAyah(details.number);
+            navigateTo('quran');
         } catch (err) {
-            console.error("Navigation from inspiration card failed:", err);
-            showNotification('İlgili içeriğe gidilemedi.', 'error');
+            console.error("Navigation from inspiration ayet failed:", err);
+            showNotification('İlgili ayete gidilemedi.', 'error');
             setIsNavigating(false);
         }
-        // NOTE: No need to set isNavigating to false on success, as the component will unmount.
     };
+    
+    const handleHadisClick = async () => {
+        if (!inspiration || isNavigating) return;
+        setIsNavigating(true);
+        try {
+             const hadithResult: HadithResult = {
+                arabicText: inspiration.hadis.arabicText,
+                turkishText: inspiration.hadis.text,
+                narrator: inspiration.hadis.narrator,
+                source: inspiration.hadis.sourceDetails
+            };
+
+            const historyItem = {
+                id: `daily-${new Date().toISOString().split('T')[0]}`,
+                question: `Günün Hadisi: ${inspiration.hadis.source}`,
+                customTitle: `Günün Hadisi: ${inspiration.hadis.source}`,
+                responses: [{ hadiths: [hadithResult], hasMore: false }]
+            };
+
+            sessionStorage.setItem('importedDataFor_hadith', JSON.stringify(historyItem));
+            navigateTo('hadith');
+        } catch (err) {
+            console.error("Navigation from inspiration hadis failed:", err);
+            showNotification('İlgili hadise gidilemedi.', 'error');
+            setIsNavigating(false);
+        }
+    };
+
 
     const loadContinueItems = useCallback(() => {
         const items: ContinueItem[] = [];
+
+        // Helper for history-based modules
+        const addHistoryItem = (key: 'hadith' | 'fiqh' | 'risale' | 'dua', label: string, icon: React.ReactNode) => {
+            try {
+                const historyKey = key === 'fiqh' ? 'fiqhChatHistory' : `${key}SearchHistory`;
+                const historyJSON = localStorage.getItem(historyKey);
+                if (!historyJSON) return;
+
+                const history = JSON.parse(historyJSON);
+                if (history.length > 0) {
+                    const lastItem = history[0];
+                    items.push({
+                        key,
+                        label,
+                        sublabel: lastItem.customTitle || lastItem.question,
+                        icon,
+                        action: () => {
+                            sessionStorage.setItem(`importedDataFor_${key}`, JSON.stringify(lastItem));
+                            navigateTo(key as View);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error(`Error loading continue item for ${key}:`, e);
+            }
+        };
+
+        // 1. Quran Reader
         const quranPage = localStorage.getItem('quranLastPage');
         if (quranPage) {
             items.push({
-                key: 'quran', label: 'Kur\'an Okumaya Devam Et', sublabel: `Sayfa ${quranPage}`, icon: <BookOpenIcon className="w-5 h-5"/>,
+                key: 'quran',
+                label: 'Kur\'an Okumaya Devam Et',
+                sublabel: `Sayfa ${quranPage}`,
+                icon: <BookOpenIcon className="w-5 h-5"/>,
                 action: () => { setInitialQuranPage(parseInt(quranPage)); navigateTo('quran'); }
             });
         }
+
+        // 2. Recitation Checker
         const recitationPage = localStorage.getItem('recitationLastPage');
         if (recitationPage) {
             items.push({
-                key: 'recitation', label: 'Kıraat Alıştırması', sublabel: `Sayfa ${recitationPage}`, icon: <MicIcon className="w-5 h-5"/>,
+                key: 'recitation',
+                label: 'Kıraat Alıştırması',
+                sublabel: `Sayfa ${recitationPage}`,
+                icon: <MicIcon className="w-5 h-5"/>,
                 action: () => { navigateTo('recitation'); }
             });
         }
+        
+        // 3. Zikirmatik
         try {
-            const fiqhHistory = JSON.parse(localStorage.getItem('fiqhChatHistory') || '[]');
-            if (fiqhHistory.length > 0) {
-                const lastItem = fiqhHistory[0];
+            const zikirStateJSON = localStorage.getItem('zikirmatikState');
+            if (zikirStateJSON) {
+                const zikirState = JSON.parse(zikirStateJSON);
+                const currentDhikr = zikirState.dhikrList[zikirState.currentDhikrIndex];
+                if (currentDhikr) {
+                    items.push({
+                        key: 'zikirmatik',
+                        label: 'Zikre Devam Et',
+                        sublabel: `${currentDhikr.text.split(' ')[0]} (${currentDhikr.count})`,
+                        icon: <PlusCircleIcon className="w-5 h-5"/>,
+                        action: () => navigateTo('zikirmatik')
+                    });
+                }
+            }
+        } catch(e) { console.error('Error loading continue item for zikirmatik:', e); }
+
+        // 4. Hadith Search
+        addHistoryItem('hadith', 'Son Hadis Araması', <SparklesIcon className="w-5 h-5"/>);
+
+        // 5. Fiqh Chat
+        addHistoryItem('fiqh', 'Son Fıkıh Sorusu', <ChatBubbleLeftRightIcon className="w-5 h-5"/>);
+
+        // 6. Dua & Zikir Search
+        addHistoryItem('dua', 'Son Dua Araması', <HandRaisedIcon className="w-5 h-5"/>);
+
+        // 7. Peygamberler Tarihi
+        try {
+            const prophetJSON = localStorage.getItem('peygamberlerLastProphet');
+            if (prophetJSON) {
+                const lastProphet = JSON.parse(prophetJSON);
                 items.push({
-                    key: 'fiqh', label: 'Son Fıkıh Sorusu', sublabel: lastItem.customTitle || lastItem.question, icon: <ChatBubbleLeftRightIcon className="w-5 h-5"/>,
-                    action: () => {
-                        sessionStorage.setItem('importedDataFor_fiqh', JSON.stringify(lastItem));
-                        navigateTo('fiqh');
-                    }
+                    key: 'peygamberler',
+                    label: 'Peygamberler Tarihine Devam Et',
+                    sublabel: lastProphet.name,
+                    icon: <GlobeAltIcon className="w-5 h-5"/>,
+                    action: () => navigateTo('peygamberler')
                 });
             }
-        } catch (e) {}
+        } catch(e) { console.error('Error loading continue item for peygamberler:', e); }
 
-        setContinueItems(items.slice(0, 3));
+        // 8. Risale Search
+        addHistoryItem('risale', 'Son Risale Araması', <BookOpenIcon className="w-5 h-5"/>);
+
+
+        setContinueItems(items);
     }, []);
 
 
     useEffect(() => {
         handleUrlImport();
 
-        // Load dashboard data only when on home view
-        if(currentView === 'home') {
+        if (currentView === 'home') {
+            // Reset states related to navigation from the dashboard to prevent issues on return.
+             setIsNavigating(false);
+            
             setIsPrayerLoading(true);
             navigator.geolocation.getCurrentPosition(
                 (position) => fetchPrayerTimes(position.coords.latitude, position.coords.longitude),
-                () => { // On error, use last known location or default
+                () => {
                     const savedLocation = localStorage.getItem('namazVakitleriLocation');
-                    if(savedLocation){
+                    if (savedLocation) {
                         const loc = JSON.parse(savedLocation);
-                        // A bit of a hack to get coords again
                         axios.get(`https://nominatim.openstreetmap.org/search?q=${loc.city},${loc.country}&format=json&limit=1`).then(res => {
-                           if(res.data && res.data.length > 0) {
-                               fetchPrayerTimes(res.data[0].lat, res.data[0].lon);
-                           } else {
-                               fetchPrayerTimes(41.0082, 28.9784); // Istanbul default
-                           }
+                            if (res.data && res.data.length > 0) {
+                                fetchPrayerTimes(res.data[0].lat, res.data[0].lon);
+                            } else {
+                                fetchPrayerTimes(41.0082, 28.9784); // Istanbul default
+                            }
                         }).catch(() => fetchPrayerTimes(41.0082, 28.9784));
                     } else {
                         fetchPrayerTimes(41.0082, 28.9784); // Istanbul default
@@ -449,14 +563,35 @@ const App: React.FC = () => {
                 }
             );
 
-            fetchInspiration();
+            const loadInspiration = () => {
+                const cached = localStorage.getItem('dailyInspiration');
+                const today = new Date().toDateString();
+                if (cached) {
+                    try {
+                        const { date, data } = JSON.parse(cached);
+                        // Add validation for cached data
+                        if (date === today && data.ayet && data.hadis && data.ayet.arabicText && data.hadis.text) {
+                            setInspiration(data);
+                            setIsInspirationLoading(false); // Ensure it's off
+                            return;
+                        }
+                    } catch (e) {
+                        console.error("Failed to parse inspiration cache:", e);
+                    }
+                }
+                // If cache is invalid or missing
+                setIsInspirationLoading(true);
+                fetchNewInspiration();
+            };
+
+            loadInspiration();
             loadContinueItems();
         }
 
         return () => {
-             if (prayerIntervalRef.current) clearInterval(prayerIntervalRef.current);
+            if (prayerIntervalRef.current) clearInterval(prayerIntervalRef.current);
         }
-    }, [currentView, fetchInspiration, fetchPrayerTimes, loadContinueItems]);
+    }, [currentView, fetchNewInspiration, fetchPrayerTimes, loadContinueItems]);
 
 
     useEffect(() => {
@@ -490,6 +625,10 @@ const App: React.FC = () => {
 
     const goHome = () => {
         setCurrentView('home');
+        // Reset states related to navigation from the dashboard to prevent issues on return.
+        setIsNavigating(false);
+        setInitialQuranPage(null);
+        setHighlightAyah(null);
     };
 
     const handleCreateBackup = () => {
@@ -500,6 +639,7 @@ const App: React.FC = () => {
                 'fiqhChatHistory',
                 'risaleSearchHistory',
                 'duaSearchHistory',
+                'zikirmatikState', // Add zikirmatik to backup
                 'recitationProgressV2',
                 'quranViewMode',
                 'quranLastPage',
@@ -644,8 +784,6 @@ const App: React.FC = () => {
             };
 
             recognitionRef.current.onend = () => {
-                // FIX: Use functional setState to get the latest state and avoid stale closure issues
-                // that cause TypeScript control flow analysis errors.
                 setReciteState(currentReciteState => {
                     if (currentReciteState === 'recording') { // Stopped manually before result
                         return 'processing';
@@ -702,6 +840,8 @@ const App: React.FC = () => {
         content = <DuaSearch onGoHome={goHome} />;
     } else if (currentView === 'peygamberler') {
         content = <PeygamberlerTarihi onGoHome={goHome} />;
+    } else if (currentView === 'zikirmatik') {
+        content = <Zikirmatik onGoHome={goHome} />;
     } else {
         content = (
             <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
@@ -733,25 +873,35 @@ const App: React.FC = () => {
                             </div>
 
                             {/* Daily Inspiration Widget */}
-                             <button 
-                                onClick={handleInspirationClick} 
-                                disabled={isInspirationLoading || isNavigating}
-                                className="w-full text-left p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg transition-all hover:shadow-xl hover:-translate-y-1 min-h-[150px] relative disabled:opacity-70 disabled:cursor-wait"
+                             <div 
+                                className="w-full text-left p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-lg min-h-[150px] relative"
                             >
-                                <h2 className="text-lg font-bold text-teal-600 dark:text-teal-400 mb-2">Günün Ayeti / Hadisi</h2>
                                 {isInspirationLoading ? <div className="flex items-center justify-center pt-4"><Spinner/></div> : inspiration ? (
                                     <div>
-                                        {inspiration.arabicText && (
-                                            <p dir="rtl" className="font-amiri text-2xl text-right mb-3 text-gray-800 dark:text-gray-200">{inspiration.arabicText}</p>
-                                        )}
-                                        <blockquote className="italic text-gray-600 dark:text-gray-300">"{inspiration.text}"</blockquote>
-                                        <p className="text-right text-sm font-semibold text-gray-500 dark:text-gray-400 mt-2">- {inspiration.source}</p>
+                                        <div onClick={handleAyetClick} className="cursor-pointer group">
+                                            <h2 className="text-lg font-bold text-teal-600 dark:text-teal-400 mb-2 group-hover:text-teal-500">Günün Ayeti</h2>
+                                            <p dir="rtl" className="font-amiri text-2xl text-right mb-3 text-gray-800 dark:text-gray-200">{inspiration.ayet.arabicText}</p>
+                                            <blockquote className="italic text-gray-600 dark:text-gray-300">"{inspiration.ayet.text}"</blockquote>
+                                            <p className="text-right text-sm font-semibold text-gray-500 dark:text-gray-400 mt-2">- {inspiration.ayet.source}</p>
+                                        </div>
+
+                                        <hr className="my-4 border-gray-200 dark:border-gray-700" />
+                                        
+                                        <div onClick={handleHadisClick} className="cursor-pointer group">
+                                            <h2 className="text-lg font-bold text-teal-600 dark:text-teal-400 mb-2 group-hover:text-teal-500">İlgili Hadis-i Şerif</h2>
+                                            {inspiration.hadis.arabicText && (
+                                                <p dir="rtl" className="font-amiri text-xl text-right mb-3 text-gray-800 dark:text-gray-200">{inspiration.hadis.arabicText}</p>
+                                            )}
+                                            <blockquote className="italic text-gray-600 dark:text-gray-300">"{inspiration.hadis.text}"</blockquote>
+                                            <p className="text-right text-sm font-semibold text-gray-500 dark:text-gray-400 mt-2">- {inspiration.hadis.source}</p>
+                                        </div>
+
                                     </div>
                                 ) : (
                                     <div className="text-center text-gray-500 pt-4">İçerik yüklenemedi.</div>
                                 )}
                                 {isNavigating && <div className="absolute inset-0 bg-white/50 dark:bg-gray-800/50 flex items-center justify-center rounded-2xl"><Spinner/></div>}
-                            </button>
+                            </div>
                         </div>
 
                         {/* Side Area with Continue and Main Modules */}
@@ -793,28 +943,32 @@ const App: React.FC = () => {
                                     <ChatBubbleLeftRightIcon className="w-8 h-8 text-teal-500 mb-2"/>
                                     <p className="font-bold">Fıkıh Sor</p>
                                 </button>
+                                <button onClick={() => navigateTo('risale')} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center hover:shadow-xl hover:-translate-y-1 transition-all">
+                                    <BookOpenIcon className="w-8 h-8 text-teal-500 mb-2"/>
+                                    <p className="font-bold">Risale-i Nur</p>
+                                </button>
+                                <button onClick={() => navigateTo('dua')} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center hover:shadow-xl hover:-translate-y-1 transition-all">
+                                    <HandRaisedIcon className="w-8 h-8 text-teal-500 mb-2"/>
+                                    <p className="font-bold">Dua & Zikir</p>
+                                </button>
                              </div>
                         </div>
                     </div>
 
                     <div>
                         <h3 className="text-xl font-bold text-gray-500 dark:text-gray-400 mb-4 text-center">Diğer Araçlar</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <button onClick={() => navigateTo('dua')} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center justify-center space-x-3 hover:shadow-lg hover:-translate-y-0.5 transition-all">
-                                <HandRaisedIcon className="w-6 h-6 text-teal-500"/>
-                                <span className="font-semibold">Dua & Zikir</span>
-                            </button>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             <button onClick={() => navigateTo('peygamberler')} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center justify-center space-x-3 hover:shadow-lg hover:-translate-y-0.5 transition-all">
                                 <GlobeAltIcon className="w-6 h-6 text-teal-500"/>
                                 <span className="font-semibold">Peygamberler</span>
                             </button>
-                             <button onClick={() => navigateTo('risale')} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center justify-center space-x-3 hover:shadow-lg hover:-translate-y-0.5 transition-all">
-                                <BookOpenIcon className="w-6 h-6 text-teal-500"/>
-                                <span className="font-semibold">Risale-i Nur</span>
-                            </button>
                              <button onClick={() => navigateTo('namaz')} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center justify-center space-x-3 hover:shadow-lg hover:-translate-y-0.5 transition-all">
                                 <ClockIcon className="w-6 h-6 text-teal-500"/>
                                 <span className="font-semibold">Namaz Vakitleri</span>
+                            </button>
+                            <button onClick={() => navigateTo('zikirmatik')} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center justify-center space-x-3 hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                                <PlusCircleIcon className="w-6 h-6 text-teal-500"/>
+                                <span className="font-semibold">Zikirmatik</span>
                             </button>
                         </div>
                     </div>
@@ -881,7 +1035,7 @@ const App: React.FC = () => {
                                 ) : (
                                     <div className="space-y-4">
                                          <h3 className="text-lg font-semibold">Yedekten Verilerinizi Geri Yükleyin</h3>
-                                        <p className="text-sm text-gray-600 dark:text-gray-400">Daha önce oluşturduğunuz yedekleme kodunu aşağıya yapıştırarak tüm verilerinizi bu cihaza aktarabilirsiniz. <strong className="text-red-500">Bu işlem, bu cihazdaki mevcut verilerin üzerine yazılacaktır.</strong></p>
+                                        <p className="text-sm text-gray-600 dark:text-gray-400">Daha önce oluşturduğunuz yedekleme kodunu aşağıya yapıştırarak tüm verilerinizi bu cihaza aktarabilirsiniz. <strong className="text-red-500">Bu işlem, bu cihazdaki mevcut verilerin üzerine yazar.</strong></p>
                                         <textarea
                                             value={restoreCode}
                                             onChange={(e) => setRestoreCode(e.target.value)}
@@ -1073,5 +1227,4 @@ const App: React.FC = () => {
     );
 };
 
-// FIX: Add default export for the App component.
 export default App;
