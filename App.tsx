@@ -305,7 +305,7 @@ const App: React.FC = () => {
             const today = new Date().toDateString();
             const response = await ai.current.models.generateContent({
                 model: 'gemini-2.5-flash',
-                contents: "Günün ilhamı için, önce belirli bir konuda (örneğin sabır, şükür, namaz, sadaka gibi) bir Kur'an ayeti seç. Ardından, SEÇTİĞİN BU AYETTEKİ KONUYU DOĞRUDAN AÇIKLAYAN, DETAYLANDIRAN VEYA UYGULAMASINI GÖSTEREN sahih bir Hadis-i Şerif bul. Ayet ve hadis arasındaki bağlantı çok güçlü ve net olmalı. Bu ikisini tek bir JSON objesi olarak, başka hiçbir açıklama yapmadan döndür. JSON objesi 'ayet' ve 'hadis' anahtarlarını içermelidir.",
+                contents: "Günün ilhamı için, önce belirli bir konuda (örneğin sabır, şükür, namaz, sadaka gibi) bir Kur'an ayeti seç. Ardından, SEÇTİĞİN BU AYETTEKİ KONUYU DOĞRUDAN AÇIKLAYAN, DETAYLANDIRAN VEYA UYGULAMASINI GÖSTEREN sahih bir Hadis-i Şerif bul. Ayet ve hadis arasındaki bağlantı çok güçlü ve net olmalı. Bu ikisini tek bir JSON objesi olarak, başka hiçbir açıklama yapmadan döndür. ÖNEMLİ: Döndürülen JSON içindeki 'text' alanları (hem ayet hem de hadis için) MUTLAKA Türkçe olmalıdır. JSON objesi 'ayet' ve 'hadis' anahtarlarını içermelidir. Ayetin 'source' alanına Sure adını ve ayet numarasını yaz (örn: 'Bakara Suresi, 255. Ayet'). Hadisin 'sourceDetails' objesine ana koleksiyon (book), bölüm (chapter), hadis numarası (hadithNumber) ve MÜMKÜNSE cilt (volume) ile sayfa numarası (pageNumber) bilgilerini ekle.",
                 config: {
                     responseMimeType: "application/json",
                     responseSchema: {
@@ -336,7 +336,9 @@ const App: React.FC = () => {
                                         properties: {
                                             book: { type: Type.STRING },
                                             chapter: { type: Type.STRING },
-                                            hadithNumber: { type: Type.STRING }
+                                            hadithNumber: { type: Type.STRING },
+                                            volume: { type: Type.STRING },
+                                            pageNumber: { type: Type.STRING }
                                         },
                                         required: ["book", "chapter", "hadithNumber"]
                                     }
@@ -367,7 +369,7 @@ const App: React.FC = () => {
                     type: 'Ayet',
                     arabicText: 'ٱللَّهُ لَآ إِلَٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ',
                     text: 'Allah, O’ndan başka ilah yoktur; diridir, her şeyin varlığı O’na bağlı ve dayalıdır.',
-                    source: 'Bakara, 255',
+                    source: 'Bakara Suresi, 255. Ayet',
                     surahNumber: 2,
                     ayahInSurah: 255
                 },
@@ -893,7 +895,15 @@ const App: React.FC = () => {
                                                 <p dir="rtl" className="font-amiri text-xl text-right mb-3 text-gray-800 dark:text-gray-200">{inspiration.hadis.arabicText}</p>
                                             )}
                                             <blockquote className="italic text-gray-600 dark:text-gray-300">"{inspiration.hadis.text}"</blockquote>
-                                            <p className="text-right text-sm font-semibold text-gray-500 dark:text-gray-400 mt-2">- {inspiration.hadis.source}</p>
+                                            <p className="text-right text-sm font-semibold text-gray-500 dark:text-gray-400 mt-2">
+                                                - {[
+                                                    inspiration.hadis.sourceDetails.book,
+                                                    inspiration.hadis.sourceDetails.chapter,
+                                                    inspiration.hadis.sourceDetails.volume ? `Cilt: ${inspiration.hadis.sourceDetails.volume}` : null,
+                                                    inspiration.hadis.sourceDetails.hadithNumber ? `No: ${inspiration.hadis.sourceDetails.hadithNumber}` : null,
+                                                    inspiration.hadis.sourceDetails.pageNumber ? `Sayfa: ${inspiration.hadis.sourceDetails.pageNumber}` : null,
+                                                ].filter(Boolean).join(', ')}
+                                            </p>
                                         </div>
 
                                     </div>
@@ -1190,7 +1200,7 @@ const App: React.FC = () => {
                                 {reciteState === 'processing' && (
                                     <>
                                         <Spinner />
-                                        <p className="text-gray-600 dark:text-gray-400 mt-4">Okunan Ayet tespit ediliyor...</p>
+                                        <p className="text-gray-600 dark:text-gray-400 mt-4">Ayet tespit ediliyor...</p>
                                     </>
                                 )}
                                 {reciteState === 'result' && identifiedAyah && (
