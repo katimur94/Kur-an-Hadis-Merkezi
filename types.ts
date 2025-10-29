@@ -156,3 +156,58 @@ export interface DuaResponse {
     usageContext: string;
     sources: DuaSourceInfo[];
 }
+
+// --- Ilmi Arastirma (Universal Search) Types ---
+
+export interface ArastirmaKuranDelili {
+    referans: string;
+    arapca: string;
+    meal: string;
+}
+
+export interface ArastirmaHadisDelili {
+    kaynak: string;
+    arapca: string;
+    turkce: string;
+}
+
+export interface ArastirmaFikihHukmu {
+    mezhep: string;
+    hukum: string;
+    kaynak: string;
+}
+
+export interface ArastirmaRisaleIktibas {
+    metin: string;
+    kaynak: string;
+}
+
+export interface ArastirmaRisalePerspektifi {
+    ozet: string;
+    iktibaslar: ArastirmaRisaleIktibas[];
+}
+
+export interface ArastirmaIlgiliDua {
+    arapca: string;
+    okunus: string;
+    anlam: string;
+    kaynak: string;
+}
+
+export interface ArastirmaRaporu {
+  konuBasligi: string;
+  girisOzeti: string;
+  adimAdimAnlatim?: { adim: string; aciklama: string; }[];
+  kuranDelilleri?: ArastirmaKuranDelili[];
+  hadisDelilleri?: ArastirmaHadisDelili[];
+  fikihHukumleri?: ArastirmaFikihHukmu[];
+  risaleINurPerspektifi?: ArastirmaRisalePerspektifi;
+  ilgiliDualar?: ArastirmaIlgiliDua[];
+}
+
+export interface IlmiArastirmaHistoryItem {
+    id: string;
+    question: string;
+    customTitle?: string;
+    response: ArastirmaRaporu;
+}
