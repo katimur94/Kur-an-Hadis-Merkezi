@@ -9,7 +9,8 @@ import RisaleSearch from './components/RisaleSearch';
 import NamazVakitleri from './components/NamazVakitleri';
 import DuaSearch from './components/DuaSearch';
 import PeygamberlerTarihi from './components/PeygamberlerTarihi';
-import Zikirmatik from './components/Zikirmatik'; // Import the new component
+import Zikirmatik from './components/Zikirmatik';
+import IlmiArastirma from './components/IlmiArastirma';
 import { LugatContextProvider } from './components/Lugat';
 import { getAyahDetails } from './services/api';
 import { GoogleGenAI, Type } from "@google/genai";
@@ -17,7 +18,7 @@ import Spinner from './components/Spinner';
 import type { HadithResult, SourceInfo } from './types';
 
 
-type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh' | 'risale' | 'namaz' | 'dua' | 'peygamberler' | 'zikirmatik';
+type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh' | 'risale' | 'namaz' | 'dua' | 'peygamberler' | 'zikirmatik' | 'ilmi-arastirma';
 
 // --- Dashboard Types ---
 interface PrayerData {
@@ -118,6 +119,8 @@ const ChevronRightIcon: React.FC<{ className?: string }> = ({ className }) => (<
 const HandRaisedIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M15.042 21.672 13.684 16.6m0 0-2.51 2.225.569-9.47 5.227 7.917-3.286-.672ZM12 2.25V4.5m5.832.168-1.757 1.757M12 21.75v-2.25m-5.832.168 1.757-1.757M4.168 12H6.42m12.16 0h2.252m-5.832 5.832 1.757 1.757M6.168 6.168 4.41 4.41m1.757 1.757 1.757 1.757M12 6.75v2.25m-1.757 3.433 1.757-1.757" /></svg>);
 const GlobeAltIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c.24 0 .468.02.69.058M12 3a9.004 9.004 0 0 1 8.716 6.747M12 3a9.004 9.004 0 0 0-8.716-6.747M12 3c-.24 0-.468.02-.69.058m18 9c0 5.14-4.2 9.29-9.428 9.29-5.228 0-9.428-4.15-9.428-9.29s4.2-9.29 9.428-9.29C17.8 2.71 22 6.86 22 12Z" /></svg>);
 const PlusCircleIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>);
+const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className || "w-5 h-5"}><path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" /></svg>);
+const ArchiveBoxIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" /></svg>);
 
 
 const App: React.FC = () => {
@@ -157,6 +160,7 @@ const App: React.FC = () => {
     const [continueItems, setContinueItems] = useState<ContinueItem[]>([]);
     const prayerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+    const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
@@ -202,7 +206,7 @@ const App: React.FC = () => {
             }
 
             if (module && importedDataString) {
-                const validModules: View[] = ['hadith', 'fiqh', 'risale', 'namaz', 'dua'];
+                const validModules: View[] = ['hadith', 'fiqh', 'risale', 'namaz', 'dua', 'ilmi-arastirma'];
                 
                 if (validModules.includes(module as View)) {
                     sessionStorage.setItem(`importedDataFor_${module}`, importedDataString);
@@ -301,57 +305,27 @@ const App: React.FC = () => {
     }, []);
 
     const fetchNewInspiration = useCallback(async () => {
+        setIsInspirationLoading(true);
         try {
             const today = new Date().toDateString();
+            const prompt = `Bugünün ilhamı için, önce belirli bir konuda (örneğin sabır, şükür, namaz, sadaka gibi) bir Kur'an ayeti seç. Bugünün tarihi ${new Date().toLocaleDateString('tr-TR')}, bu yüzden dünden farklı bir konu seçmeye çalış. Ardından, SEÇTİĞİN BU AYETTEKİ KONUYU DOĞRUDAN AÇIKLAYAN, DETAYLANDIRAN VEYA UYGULAMASINI GÖSTEREN sahih bir Hadis-i Şerif bul. Ayet ve hadis arasındaki bağlantı çok güçlü ve net olmalı. Bu ikisini tek bir JSON objesi olarak, başka hiçbir açıklama yapmadan döndür. ÖNEMLİ: Döndürülen JSON içindeki 'text' alanları (hem ayet hem de hadis için) MUTLAKA Türkçe olmalıdır. JSON objesi 'ayet' ve 'hadis' anahtarlarını içermelidir. Ayetin 'source' alanına Sure adını ve ayet numarasını yaz (örn: 'Bakara Suresi, 255. Ayet'). Hadisin 'sourceDetails' objesine ana koleksiyon (book), bölüm (chapter), hadis numarası (hadithNumber) ve MÜMKÜNSE cilt (volume) ile sayfa numarası (pageNumber) bilgilerini ekle. JSON'un şu yapıda olduğundan emin ol: { "ayet": { "type": "Ayet", "arabicText": "...", "text": "...", "source": "...", "surahNumber": 2, "ayahInSurah": 255 }, "hadis": { "type": "Hadis", "arabicText": "...", "text": "...", "source": "...", "narrator": "...", "sourceDetails": { "book": "...", "chapter": "...", "hadithNumber": "..." } } }`;
+            
             const response = await ai.current.models.generateContent({
                 model: 'gemini-2.5-flash',
-                contents: "Günün ilhamı için, önce belirli bir konuda (örneğin sabır, şükür, namaz, sadaka gibi) bir Kur'an ayeti seç. Ardından, SEÇTİĞİN BU AYETTEKİ KONUYU DOĞRUDAN AÇIKLAYAN, DETAYLANDIRAN VEYA UYGULAMASINI GÖSTEREN sahih bir Hadis-i Şerif bul. Ayet ve hadis arasındaki bağlantı çok güçlü ve net olmalı. Bu ikisini tek bir JSON objesi olarak, başka hiçbir açıklama yapmadan döndür. ÖNEMLİ: Döndürülen JSON içindeki 'text' alanları (hem ayet hem de hadis için) MUTLAKA Türkçe olmalıdır. JSON objesi 'ayet' ve 'hadis' anahtarlarını içermelidir. Ayetin 'source' alanına Sure adını ve ayet numarasını yaz (örn: 'Bakara Suresi, 255. Ayet'). Hadisin 'sourceDetails' objesine ana koleksiyon (book), bölüm (chapter), hadis numarası (hadithNumber) ve MÜMKÜNSE cilt (volume) ile sayfa numarası (pageNumber) bilgilerini ekle.",
+                contents: prompt,
                 config: {
-                    responseMimeType: "application/json",
-                    responseSchema: {
-                        type: Type.OBJECT,
-                        properties: {
-                            ayet: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    type: { type: Type.STRING },
-                                    arabicText: { type: Type.STRING },
-                                    text: { type: Type.STRING },
-                                    source: { type: Type.STRING },
-                                    surahNumber: { type: Type.INTEGER },
-                                    ayahInSurah: { type: Type.INTEGER }
-                                },
-                                required: ["type", "arabicText", "text", "source", "surahNumber", "ayahInSurah"]
-                            },
-                            hadis: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    type: { type: Type.STRING },
-                                    arabicText: { type: Type.STRING },
-                                    text: { type: Type.STRING },
-                                    source: { type: Type.STRING },
-                                    narrator: { type: Type.STRING },
-                                    sourceDetails: {
-                                        type: Type.OBJECT,
-                                        properties: {
-                                            book: { type: Type.STRING },
-                                            chapter: { type: Type.STRING },
-                                            hadithNumber: { type: Type.STRING },
-                                            volume: { type: Type.STRING },
-                                            pageNumber: { type: Type.STRING }
-                                        },
-                                        required: ["book", "chapter", "hadithNumber"]
-                                    }
-                                },
-                                required: ["type", "arabicText", "text", "source", "narrator", "sourceDetails"]
-                            }
-                        },
-                        required: ["ayet", "hadis"]
-                    }
+                    temperature: 0.7,
                 }
             });
             
-            const jsonString = response.text.trim();
+            // Clean the response text to ensure it's valid JSON
+            let jsonString = response.text.trim();
+            const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+            if (!jsonMatch) {
+                throw new Error("AI did not return a valid JSON object.");
+            }
+            jsonString = jsonMatch[0];
+
             const data: DailyInspiration = JSON.parse(jsonString);
 
             // Extra validation to ensure data is complete before setting state
@@ -438,9 +412,9 @@ const App: React.FC = () => {
         const items: ContinueItem[] = [];
 
         // Helper for history-based modules
-        const addHistoryItem = (key: 'hadith' | 'fiqh' | 'risale' | 'dua', label: string, icon: React.ReactNode) => {
+        const addHistoryItem = (key: 'hadith' | 'fiqh' | 'risale' | 'dua' | 'ilmi-arastirma', label: string, icon: React.ReactNode) => {
             try {
-                const historyKey = key === 'fiqh' ? 'fiqhChatHistory' : `${key}SearchHistory`;
+                const historyKey = key === 'fiqh' ? 'fiqhChatHistory' : `${key}History`;
                 const historyJSON = localStorage.getItem(historyKey);
                 if (!historyJSON) return;
 
@@ -505,16 +479,19 @@ const App: React.FC = () => {
             }
         } catch(e) { console.error('Error loading continue item for zikirmatik:', e); }
 
-        // 4. Hadith Search
+        // 4. Ilmi Arastirma
+        addHistoryItem('ilmi-arastirma', 'Son İlmî Araştırma', <ArchiveBoxIcon className="w-5 h-5"/>);
+
+        // 5. Hadith Search
         addHistoryItem('hadith', 'Son Hadis Araması', <SparklesIcon className="w-5 h-5"/>);
 
-        // 5. Fiqh Chat
+        // 6. Fiqh Chat
         addHistoryItem('fiqh', 'Son Fıkıh Sorusu', <ChatBubbleLeftRightIcon className="w-5 h-5"/>);
 
-        // 6. Dua & Zikir Search
+        // 7. Dua & Zikir Search
         addHistoryItem('dua', 'Son Dua Araması', <HandRaisedIcon className="w-5 h-5"/>);
 
-        // 7. Peygamberler Tarihi
+        // 8. Peygamberler Tarihi
         try {
             const prophetJSON = localStorage.getItem('peygamberlerLastProphet');
             if (prophetJSON) {
@@ -529,7 +506,7 @@ const App: React.FC = () => {
             }
         } catch(e) { console.error('Error loading continue item for peygamberler:', e); }
 
-        // 8. Risale Search
+        // 9. Risale Search
         addHistoryItem('risale', 'Son Risale Araması', <BookOpenIcon className="w-5 h-5"/>);
 
 
@@ -641,6 +618,7 @@ const App: React.FC = () => {
                 'fiqhChatHistory',
                 'risaleSearchHistory',
                 'duaSearchHistory',
+                'ilmiArastirmaHistory',
                 'zikirmatikState', // Add zikirmatik to backup
                 'recitationProgressV2',
                 'quranViewMode',
@@ -844,6 +822,8 @@ const App: React.FC = () => {
         content = <PeygamberlerTarihi onGoHome={goHome} />;
     } else if (currentView === 'zikirmatik') {
         content = <Zikirmatik onGoHome={goHome} />;
+    } else if (currentView === 'ilmi-arastirma') {
+        content = <IlmiArastirma onGoHome={goHome} />;
     } else {
         content = (
             <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
@@ -937,6 +917,10 @@ const App: React.FC = () => {
                             )}
 
                              <div className="grid grid-cols-2 gap-4">
+                                <button onClick={() => navigateTo('ilmi-arastirma')} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center hover:shadow-xl hover:-translate-y-1 transition-all">
+                                    <ArchiveBoxIcon className="w-8 h-8 text-teal-500 mb-2"/>
+                                    <p className="font-bold">İlmî Araştırma</p>
+                                </button>
                                 <button onClick={() => navigateTo('quran')} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center hover:shadow-xl hover:-translate-y-1 transition-all">
                                     <BookOpenIcon className="w-8 h-8 text-teal-500 mb-2"/>
                                     <p className="font-bold">Kur'an Oku</p>
@@ -1090,6 +1074,7 @@ const App: React.FC = () => {
                                 <section>
                                     <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Yapay Zeka Destekli Araştırma Modülleri</h3>
                                     <ul className="list-disc list-inside space-y-3">
+                                        <li><strong>İlmî Araştırma:</strong> Bir konu hakkında (örn: "Abdest nasıl alınır?") tüm kaynaklardan (Kur'an, Hadis, Fıkıh, Risale, Dua) faydalanarak tek bir, kapsamlı ve kaynakçalı rapor alın. Raporu kopyalayabilir, PNG veya PDF olarak indirebilirsiniz.</li>
                                         <li><strong>Dua & Zikir Arama:</strong> Bir konu (örn: "vesvese için zikir") veya durum (örn: "tuvalete girerken") hakkında Sünnet'ten duaları ve zikirleri aratın. Yapay zeka, duanın Arapça aslını, Latin harfleriyle okunuşunu, Türkçe anlamını, ne zaman okunacağını ve kaynak hadis/ayetini size sunar.</li>
                                         <li><strong>Hadis Araştırma:</strong> Bir konu (örn: "sadakanın fazileti") hakkında hadisleri kaynaklarıyla aratın. <strong className="text-amber-600 dark:text-amber-400">Önemli:</strong> Listelenen bir hadise tıkladığınızda, yapay zeka o hadis özelinde dört büyük mezhep imamının fıkhi yorumlarını ve hükümlerini kaynaklarıyla birlikte size sunar.</li>
                                         <li><strong>Fıkıh Soru & Cevap:</strong> Fıkhi bir soru sorun (örn: "Seferi namazı nasıl kılınır?"). Yapay zeka, sorunuza dört mezhebin görüşlerini, delilleri olan ayet ve hadisleri, ve her bilginin kaynağını içeren yapılandırılmış, detaylı bir cevap oluşturur. <strong className="text-amber-600 dark:text-amber-400">Yeni:</strong> "İslam'ın şartları" veya "Namazın şartları" gibi temel konuları sorduğunuzda, cevaplar her bir maddeyi ayrı ayrı inceleyebileceğiniz, tıklanarak açılan interaktif bir liste formatında sunulur.</li>
