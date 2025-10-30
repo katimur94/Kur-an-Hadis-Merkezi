@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import * as pako from 'pako';
 import axios from 'axios';
@@ -18,7 +19,7 @@ import Spinner from './components/Spinner';
 import type { HadithResult, SourceInfo } from './types';
 
 
-type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh' | 'risale' | 'namaz' | 'dua' | 'peygamberler' | 'zikirmatik' | 'ilmi-arastirma';
+type View = 'home' | 'quran' | 'hadith' | 'recitation' | 'fiqh' | 'risale' | 'namaz' | 'dua' | 'peygamberler' | 'zikirmatik' | 'ilmiArastirma';
 
 // --- Dashboard Types ---
 interface PrayerData {
@@ -120,7 +121,6 @@ const HandRaisedIcon: React.FC<{ className?: string }> = ({ className }) => (<sv
 const GlobeAltIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c.24 0 .468.02.69.058M12 3a9.004 9.004 0 0 1 8.716 6.747M12 3a9.004 9.004 0 0 0-8.716-6.747M12 3c-.24 0-.468.02-.69.058m18 9c0 5.14-4.2 9.29-9.428 9.29-5.228 0-9.428-4.15-9.428-9.29s4.2-9.29 9.428-9.29C17.8 2.71 22 6.86 22 12Z" /></svg>);
 const PlusCircleIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v6m3-3H9m12 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>);
 const SearchIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className || "w-5 h-5"}><path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.452 4.391l3.328 3.329a.75.75 0 1 1-1.06 1.06l-3.329-3.328A7 7 0 0 1 2 9Z" clipRule="evenodd" /></svg>);
-const ArchiveBoxIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m20.25 7.5-.625 10.632a2.25 2.25 0 0 1-2.247 2.118H6.622a2.25 2.25 0 0 1-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" /></svg>);
 
 
 const App: React.FC = () => {
@@ -206,7 +206,7 @@ const App: React.FC = () => {
             }
 
             if (module && importedDataString) {
-                const validModules: View[] = ['hadith', 'fiqh', 'risale', 'namaz', 'dua', 'ilmi-arastirma'];
+                const validModules: View[] = ['hadith', 'fiqh', 'risale', 'namaz', 'dua', 'ilmiArastirma'];
                 
                 if (validModules.includes(module as View)) {
                     sessionStorage.setItem(`importedDataFor_${module}`, importedDataString);
@@ -412,7 +412,7 @@ const App: React.FC = () => {
         const items: ContinueItem[] = [];
 
         // Helper for history-based modules
-        const addHistoryItem = (key: 'hadith' | 'fiqh' | 'risale' | 'dua' | 'ilmi-arastirma', label: string, icon: React.ReactNode) => {
+        const addHistoryItem = (key: 'hadith' | 'fiqh' | 'risale' | 'dua' | 'ilmiArastirma', label: string, icon: React.ReactNode) => {
             try {
                 const historyKey = key === 'fiqh' ? 'fiqhChatHistory' : `${key}History`;
                 const historyJSON = localStorage.getItem(historyKey);
@@ -448,8 +448,11 @@ const App: React.FC = () => {
                 action: () => { setInitialQuranPage(parseInt(quranPage)); navigateTo('quran'); }
             });
         }
+        
+        // 2. Ilmi Arastirma
+        addHistoryItem('ilmiArastirma', 'Son Kapsamlı Araştırma', <SearchIcon className="w-5 h-5"/>);
 
-        // 2. Recitation Checker
+        // 3. Recitation Checker
         const recitationPage = localStorage.getItem('recitationLastPage');
         if (recitationPage) {
             items.push({
@@ -461,7 +464,7 @@ const App: React.FC = () => {
             });
         }
         
-        // 3. Zikirmatik
+        // 4. Zikirmatik
         try {
             const zikirStateJSON = localStorage.getItem('zikirmatikState');
             if (zikirStateJSON) {
@@ -478,9 +481,6 @@ const App: React.FC = () => {
                 }
             }
         } catch(e) { console.error('Error loading continue item for zikirmatik:', e); }
-
-        // 4. Ilmi Arastirma
-        addHistoryItem('ilmi-arastirma', 'Son İlmî Araştırma', <ArchiveBoxIcon className="w-5 h-5"/>);
 
         // 5. Hadith Search
         addHistoryItem('hadith', 'Son Hadis Araması', <SparklesIcon className="w-5 h-5"/>);
@@ -801,6 +801,14 @@ const App: React.FC = () => {
             setRecitedTranscript('');
         }, 300); // delay to allow modal to close gracefully
     };
+    
+    const otherTools = [
+        { key: 'peygamberler', view: 'peygamberler' as View, label: 'Peygamberler', icon: <GlobeAltIcon className="w-6 h-6 text-teal-500"/>, mobileOnly: false },
+        { key: 'namaz', view: 'namaz' as View, label: 'Namaz Vakitleri', icon: <ClockIcon className="w-6 h-6 text-teal-500"/>, mobileOnly: false },
+        { key: 'zikirmatik', view: 'zikirmatik' as View, label: 'Zikirmatik', icon: <PlusCircleIcon className="w-6 h-6 text-teal-500"/>, mobileOnly: false },
+    ];
+    
+    const availableTools = otherTools.filter(tool => !tool.mobileOnly || isMobile);
 
     let content;
 
@@ -822,7 +830,7 @@ const App: React.FC = () => {
         content = <PeygamberlerTarihi onGoHome={goHome} />;
     } else if (currentView === 'zikirmatik') {
         content = <Zikirmatik onGoHome={goHome} />;
-    } else if (currentView === 'ilmi-arastirma') {
+    } else if (currentView === 'ilmiArastirma') {
         content = <IlmiArastirma onGoHome={goHome} />;
     } else {
         content = (
@@ -917,9 +925,9 @@ const App: React.FC = () => {
                             )}
 
                              <div className="grid grid-cols-2 gap-4">
-                                <button onClick={() => navigateTo('ilmi-arastirma')} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center hover:shadow-xl hover:-translate-y-1 transition-all">
-                                    <ArchiveBoxIcon className="w-8 h-8 text-teal-500 mb-2"/>
-                                    <p className="font-bold">İlmî Araştırma</p>
+                                <button onClick={() => navigateTo('ilmiArastirma')} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center hover:shadow-xl hover:-translate-y-1 transition-all">
+                                    <SearchIcon className="w-8 h-8 text-teal-500 mb-2"/>
+                                    <p className="font-bold">Kapsamlı Arama</p>
                                 </button>
                                 <button onClick={() => navigateTo('quran')} className="p-4 bg-white dark:bg-gray-800 rounded-2xl shadow-lg flex flex-col items-center justify-center text-center hover:shadow-xl hover:-translate-y-1 transition-all">
                                     <BookOpenIcon className="w-8 h-8 text-teal-500 mb-2"/>
@@ -951,19 +959,17 @@ const App: React.FC = () => {
 
                     <div>
                         <h3 className="text-xl font-bold text-gray-500 dark:text-gray-400 mb-4 text-center">Diğer Araçlar</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                            <button onClick={() => navigateTo('peygamberler')} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center justify-center space-x-3 hover:shadow-lg hover:-translate-y-0.5 transition-all">
-                                <GlobeAltIcon className="w-6 h-6 text-teal-500"/>
-                                <span className="font-semibold">Peygamberler</span>
-                            </button>
-                             <button onClick={() => navigateTo('namaz')} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center justify-center space-x-3 hover:shadow-lg hover:-translate-y-0.5 transition-all">
-                                <ClockIcon className="w-6 h-6 text-teal-500"/>
-                                <span className="font-semibold">Namaz Vakitleri</span>
-                            </button>
-                            <button onClick={() => navigateTo('zikirmatik')} className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center justify-center space-x-3 hover:shadow-lg hover:-translate-y-0.5 transition-all">
-                                <PlusCircleIcon className="w-6 h-6 text-teal-500"/>
-                                <span className="font-semibold">Zikirmatik</span>
-                            </button>
+                        <div className={`grid grid-cols-2 ${availableTools.length % 3 === 0 && availableTools.length > 0 ? 'md:grid-cols-3' : 'md:grid-cols-4'} gap-4`}>
+                             {availableTools.map(tool => (
+                                <button 
+                                    key={tool.key} 
+                                    onClick={() => navigateTo(tool.view)} 
+                                    className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md flex items-center justify-center space-x-3 hover:shadow-lg hover:-translate-y-0.5 transition-all"
+                                >
+                                    {tool.icon}
+                                    <span className="font-semibold">{tool.label}</span>
+                                </button>
+                            ))}
                         </div>
                     </div>
 
@@ -1074,7 +1080,6 @@ const App: React.FC = () => {
                                 <section>
                                     <h3 className="text-xl font-semibold text-teal-600 dark:text-teal-400 mb-3">Yapay Zeka Destekli Araştırma Modülleri</h3>
                                     <ul className="list-disc list-inside space-y-3">
-                                        <li><strong>İlmî Araştırma:</strong> Bir konu hakkında (örn: "Abdest nasıl alınır?") tüm kaynaklardan (Kur'an, Hadis, Fıkıh, Risale, Dua) faydalanarak tek bir, kapsamlı ve kaynakçalı rapor alın. Raporu kopyalayabilir, PNG veya PDF olarak indirebilirsiniz.</li>
                                         <li><strong>Dua & Zikir Arama:</strong> Bir konu (örn: "vesvese için zikir") veya durum (örn: "tuvalete girerken") hakkında Sünnet'ten duaları ve zikirleri aratın. Yapay zeka, duanın Arapça aslını, Latin harfleriyle okunuşunu, Türkçe anlamını, ne zaman okunacağını ve kaynak hadis/ayetini size sunar.</li>
                                         <li><strong>Hadis Araştırma:</strong> Bir konu (örn: "sadakanın fazileti") hakkında hadisleri kaynaklarıyla aratın. <strong className="text-amber-600 dark:text-amber-400">Önemli:</strong> Listelenen bir hadise tıkladığınızda, yapay zeka o hadis özelinde dört büyük mezhep imamının fıkhi yorumlarını ve hükümlerini kaynaklarıyla birlikte size sunar.</li>
                                         <li><strong>Fıkıh Soru & Cevap:</strong> Fıkhi bir soru sorun (örn: "Seferi namazı nasıl kılınır?"). Yapay zeka, sorunuza dört mezhebin görüşlerini, delilleri olan ayet ve hadisleri, ve her bilginin kaynağını içeren yapılandırılmış, detaylı bir cevap oluşturur. <strong className="text-amber-600 dark:text-amber-400">Yeni:</strong> "İslam'ın şartları" veya "Namazın şartları" gibi temel konuları sorduğunuzda, cevaplar her bir maddeyi ayrı ayrı inceleyebileceğiniz, tıklanarak açılan interaktif bir liste formatında sunulur.</li>
