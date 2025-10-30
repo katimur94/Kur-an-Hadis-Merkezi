@@ -21,16 +21,29 @@ interface LineageDetails {
 interface ProphetsData {
     [key: string]: ProphetData;
 }
-interface GeneratedSource {
-    text: string;
-    translation: string;
-    reference: string;
+interface KuranKaynak {
+    referans: string;
+    arapca: string;
+    meal: string;
+}
+interface HadisKaynak {
+    kaynak: string;
+    rivayetEden: string;
+    arapca: string;
+    turkce: string;
+}
+interface SiyerKaynak {
+    kaynak: string;
+    alinti: string;
 }
 interface GeneratedContent {
     title: string;
     description: string;
-    sources: GeneratedSource[];
+    kuranKaynaklari?: KuranKaynak[];
+    hadisKaynaklari?: HadisKaynak[];
+    siyerKaynaklari?: SiyerKaynak[];
 }
+
 
 // --- ICONS ---
 const HomeIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>);
@@ -81,20 +94,51 @@ const PresentationCard: React.FC<{ content: GeneratedContent }> = ({ content }) 
             
             <p className="text-lg text-gray-300 leading-relaxed mb-10 text-center">{content.description}</p>
             
-            {content.sources && content.sources.length > 0 && (
-                 <div className="space-y-6">
-                    <h2 className="text-3xl font-semibold text-sky-300 mb-4 border-b border-sky-400/30 pb-2 font-orbitron">
-                        Kaynaklar
-                    </h2>
-                    {content.sources.map((source, i) => (
-                         <div key={i} className="border-l-4 border-amber-400 pl-6">
-                            {source.text && <blockquote dir="rtl" className="italic text-gray-200 text-2xl font-arabic mb-3">"{source.text}"</blockquote>}
-                            <blockquote className="italic text-gray-300 text-lg">"{source.translation}"</blockquote>
-                            <p className="text-right text-sm text-gray-400 mt-2">{source.reference}</p>
-                        </div>
-                    ))}
+            {content.kuranKaynaklari && content.kuranKaynaklari.length > 0 && (
+                <div className="mb-8">
+                    <h2 className="text-3xl font-semibold text-green-300 mb-4 border-b border-green-400/30 pb-2 font-orbitron">Kur'an'dan Kaynaklar</h2>
+                    <div className="space-y-6">
+                        {content.kuranKaynaklari.map((source, i) => (
+                             <div key={`kuran-${i}`} className="border-l-4 border-green-400 pl-6">
+                                {source.arapca && <blockquote dir="rtl" className="italic text-gray-200 text-2xl font-arabic mb-3">"{source.arapca}"</blockquote>}
+                                <blockquote className="italic text-gray-300 text-lg">"{source.meal}"</blockquote>
+                                <p className="text-right text-sm text-gray-400 mt-2">{source.referans}</p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
+
+            {content.hadisKaynaklari && content.hadisKaynaklari.length > 0 && (
+                 <div className="mb-8">
+                    <h2 className="text-3xl font-semibold text-sky-300 mb-4 border-b border-sky-400/30 pb-2 font-orbitron">Hadislerden Kaynaklar</h2>
+                     <div className="space-y-6">
+                        {content.hadisKaynaklari.map((source, i) => (
+                             <div key={`hadis-${i}`} className="border-l-4 border-sky-400 pl-6">
+                                {source.arapca && <blockquote dir="rtl" className="italic text-gray-200 text-2xl font-arabic mb-3">"{source.arapca}"</blockquote>}
+                                {source.rivayetEden && <p className="font-semibold text-md text-gray-400 mb-2">{source.rivayetEden} rivayet ediyor:</p>}
+                                <blockquote className="italic text-gray-300 text-lg">"{source.turkce}"</blockquote>
+                                <p className="text-right text-sm text-gray-400 mt-2">{source.kaynak}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {content.siyerKaynaklari && content.siyerKaynaklari.length > 0 && (
+                 <div className="mb-8">
+                    <h2 className="text-3xl font-semibold text-purple-300 mb-4 border-b border-purple-400/30 pb-2 font-orbitron">Siyer Kaynaklarından Alıntılar</h2>
+                     <div className="space-y-6">
+                        {content.siyerKaynaklari.map((source, i) => (
+                             <div key={`siyer-${i}`} className="border-l-4 border-purple-400 pl-6">
+                                <blockquote className="italic text-gray-300 text-lg">"{source.alinti}"</blockquote>
+                                <p className="text-right text-sm text-gray-400 mt-2">{source.kaynak}</p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            
             <footer className="text-center mt-12 text-sm text-gray-500 font-orbitron">
                 Dijital Medrese - Peygamberler Tarihi
             </footer>
@@ -120,7 +164,7 @@ const PeygamberlerTarihi: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) =>
     const [presentationData, setPresentationData] = useState<GeneratedContent | null>(null);
     
     // Refs
-    const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
+   const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
     const presentationRef = useRef<HTMLDivElement>(null);
 
     // Effects
@@ -168,7 +212,7 @@ const PeygamberlerTarihi: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) =>
         if (!prophet) return;
         setCurrentProphetKey(prophetKey);
         setCurrentYear(prophet.default);
-        setGeneratedContent({ title: prophet.name, description: 'Bilgi üretmek için "Bilgi Üret" düğmesine tıklayın.', sources: [] });
+        setGeneratedContent({ title: prophet.name, description: 'Bilgi üretmek için "Bilgi Üret" düğmesine tıklayın.' });
         setError(null);
         try {
             localStorage.setItem('peygamberlerLastProphet', JSON.stringify({ key: prophetKey, name: prophet.name }));
@@ -183,27 +227,61 @@ const PeygamberlerTarihi: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) =>
         setGeneratedContent(null);
 
         const prophet = prophetsData[currentProphetKey];
-        const prompt = `${prophet.name}'in hayatında ${formatYear(currentYear)} yılı civarında gerçekleşen önemli bir olayı; başlık, açıklama ve bu olaya delil niteliğinde, Kur'an, Kütüb-i Sitte veya temel Siyer kitaplarından (İbn Hişam, Taberi gibi) bulabildiğin kadar çok sayıda, en fazla 3-4 adet, alakalı kaynak metinle birlikte üret. Cevabını SADECE JSON formatında şu yapıya uygun olarak ver.`;
+        const range = prophet.max - prophet.min;
+        const earlyLifeThreshold = prophet.min + range * 0.1;
+        const endOfLifeThreshold = prophet.max - range * 0.1;
+
+        let specificPromptPart = '';
+
+        if (currentYear <= earlyLifeThreshold) {
+            specificPromptPart = `doğumu, ailesi, çocukluğu ve peygamberlik öncesi hayatındaki önemli olayları anlat.`;
+        } else if (currentYear >= endOfLifeThreshold) {
+            specificPromptPart = `vefatı, vefatının sebebi, son günleri, son vasiyetleri ve mirası hakkında detaylı bilgi ver.`;
+        } else {
+            specificPromptPart = `hayatında ${formatYear(currentYear)} yılı civarında gerçekleşen önemli bir peygamberlik görevi, mucizesi, mücadelesi veya önemli bir olayı anlat. Eğer o yıl tam bir olay yoksa, o döneme en yakın ve en önemli olayı seçerek anlat.`;
+        }
+
+        const prompt = `Sen bir İslam Tarihi ve Siyer uzmanısın. ${prophet.name}'in ${specificPromptPart} Cevabın SADECE JSON formatında ve şu yapıya uygun olmalı: Bir 'title' (başlık), bir 'description' (detaylı açıklama) ve üç ayrı kaynak dizisi içermeli: 'kuranKaynaklari', 'hadisKaynaklari' ve 'siyerKaynaklari'. Her bir kaynak için ilgili metinleri, çevirilerini ve tam referanslarını (Sure:Ayet, Kitap:Bölüm:No, Eser:Cilt:Sayfa gibi) belirt.`;
         const schema = {
             type: Type.OBJECT,
             properties: {
-                title: { type: Type.STRING, description: "Olayın başlığı." },
-                description: { type: Type.STRING, description: "Olayın detaylı açıklaması." },
-                sources: {
+                title: { type: Type.STRING },
+                description: { type: Type.STRING },
+                kuranKaynaklari: {
                     type: Type.ARRAY,
-                    description: "Olayla ilgili kaynaklar.",
                     items: {
                         type: Type.OBJECT,
                         properties: {
-                            text: { type: Type.STRING, description: "Ayetin/Hadisin Arapça metni (eğer varsa, yoksa boş bırak)." },
-                            translation: { type: Type.STRING, description: "Ayetin/Hadisin Türkçe meali." },
-                            reference: { type: Type.STRING, description: "Kaynak referansı (örn: Bakara Suresi, 30. Ayet veya Sahih-i Buhari, İman, 5)." }
+                            referans: { type: Type.STRING },
+                            arapca: { type: Type.STRING },
+                            meal: { type: Type.STRING },
                         },
-                        required: ['translation', 'reference']
-                    }
-                }
+                    },
+                },
+                hadisKaynaklari: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            kaynak: { type: Type.STRING },
+                            rivayetEden: { type: Type.STRING },
+                            arapca: { type: Type.STRING },
+                            turkce: { type: Type.STRING },
+                        },
+                    },
+                },
+                siyerKaynaklari: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            kaynak: { type: Type.STRING },
+                            alinti: { type: Type.STRING },
+                        },
+                    },
+                },
             },
-            required: ['title', 'description', 'sources']
+            required: ['title', 'description']
         };
 
         try {
@@ -240,18 +318,29 @@ const PeygamberlerTarihi: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) =>
 
     const handleCopyContent = () => {
         if (!generatedContent) return;
-        let textToCopy = `${generatedContent.title}\n\n`;
-        textToCopy += `${generatedContent.description}\n\n`;
-        if (generatedContent.sources && generatedContent.sources.length > 0) {
-            textToCopy += "--- KAYNAKLAR ---\n\n";
-            generatedContent.sources.forEach((source, index) => {
-                textToCopy += `${index + 1}. "${source.translation}"\n`;
-                if (source.text) {
-                     textToCopy += `   Arapça Metin: ${source.text}\n`;
-                }
-                textToCopy += `   Kaynak: ${source.reference}\n\n`;
+        let textToCopy = `${generatedContent.title}\n\n${generatedContent.description}\n\n`;
+
+        if (generatedContent.kuranKaynaklari?.length) {
+            textToCopy += "--- KUR'AN'DAN KAYNAKLAR ---\n";
+            generatedContent.kuranKaynaklari.forEach(s => {
+                textToCopy += `"${s.meal}" (${s.referans})\n`;
+            });
+            textToCopy += "\n";
+        }
+        if (generatedContent.hadisKaynaklari?.length) {
+            textToCopy += "--- HADİSLERDEN KAYNAKLAR ---\n";
+            generatedContent.hadisKaynaklari.forEach(s => {
+                textToCopy += `${s.rivayetEden} rivayet ediyor: "${s.turkce}" (${s.kaynak})\n`;
+            });
+            textToCopy += "\n";
+        }
+        if (generatedContent.siyerKaynaklari?.length) {
+            textToCopy += "--- SİYER KAYNAKLARINDAN ALINTILAR ---\n";
+            generatedContent.siyerKaynaklari.forEach(s => {
+                textToCopy += `"${s.alinti}" (${s.kaynak})\n`;
             });
         }
+
         navigator.clipboard.writeText(textToCopy.trim()).then(() => {
             setIsCopied(true);
             setTimeout(() => setIsCopied(false), 2500);
@@ -335,20 +424,49 @@ const PeygamberlerTarihi: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) =>
                                 <h2 className="text-3xl font-bold text-blue-300 mb-3 font-orbitron">{generatedContent.title}</h2>
                                 <p className="text-gray-300 text-lg leading-relaxed">{generatedContent.description}</p>
                                 
-                                {generatedContent.sources && generatedContent.sources.length > 0 && (
+                                {generatedContent.kuranKaynaklari && generatedContent.kuranKaynaklari.length > 0 && (
                                     <div className="mt-6 border-t border-gray-700 pt-4">
-                                        <h4 className="text-lg font-semibold text-blue-300 mb-2">Kaynaklar</h4>
+                                        <h4 className="text-lg font-semibold text-green-300 mb-2">Kur'an'dan Kaynaklar</h4>
                                         <div className="space-y-4">
-                                            {generatedContent.sources.map((source, index) => (
-                                                <div key={index} className="p-3 bg-gray-800/60 rounded-lg border-l-4 border-amber-500">
-                                                    {source.text && <p dir="rtl" className="font-arabic text-xl mb-2">{source.text}</p>}
-                                                    <p className="italic text-gray-300">"{source.translation}"</p>
-                                                    <p className="text-right text-xs text-gray-400 mt-2 font-mono">{source.reference}</p>
+                                            {generatedContent.kuranKaynaklari.map((source, index) => (
+                                                <div key={index} className="p-3 bg-gray-800/60 rounded-lg border-l-4 border-green-500">
+                                                    {source.arapca && <p dir="rtl" className="font-arabic text-xl mb-2">{source.arapca}</p>}
+                                                    <p className="italic text-gray-300">"{source.meal}"</p>
+                                                    <p className="text-right text-xs text-gray-400 mt-2 font-mono">{source.referans}</p>
                                                 </div>
                                             ))}
                                         </div>
                                     </div>
                                 )}
+                                {generatedContent.hadisKaynaklari && generatedContent.hadisKaynaklari.length > 0 && (
+                                    <div className="mt-6 border-t border-gray-700 pt-4">
+                                        <h4 className="text-lg font-semibold text-sky-300 mb-2">Hadislerden Kaynaklar</h4>
+                                        <div className="space-y-4">
+                                            {generatedContent.hadisKaynaklari.map((source, index) => (
+                                                <div key={index} className="p-3 bg-gray-800/60 rounded-lg border-l-4 border-sky-500">
+                                                    {source.arapca && <p dir="rtl" className="font-arabic text-xl mb-2">{source.arapca}</p>}
+                                                    {source.rivayetEden && <p className="font-semibold text-sm text-gray-400 mb-2">{source.rivayetEden} rivayet ediyor:</p>}
+                                                    <p className="italic text-gray-300">"{source.turkce}"</p>
+                                                    <p className="text-right text-xs text-gray-400 mt-2 font-mono">{source.kaynak}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                {generatedContent.siyerKaynaklari && generatedContent.siyerKaynaklari.length > 0 && (
+                                    <div className="mt-6 border-t border-gray-700 pt-4">
+                                        <h4 className="text-lg font-semibold text-purple-300 mb-2">Siyer Kaynaklarından Alıntılar</h4>
+                                        <div className="space-y-4">
+                                            {generatedContent.siyerKaynaklari.map((source, index) => (
+                                                <div key={index} className="p-3 bg-gray-800/60 rounded-lg border-l-4 border-purple-500">
+                                                    <p className="italic text-gray-300">"{source.alinti}"</p>
+                                                    <p className="text-right text-xs text-gray-400 mt-2 font-mono">{source.kaynak}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
 
                                 <div className="mt-6 border-t border-gray-700 pt-4 flex flex-wrap gap-4">
                                     <button onClick={handleCopyContent} className="emboss-button flex-auto bg-gradient-to-br from-gray-500 to-gray-600 text-white font-bold py-2 px-4 rounded-lg shadow-md flex items-center justify-center gap-2">
