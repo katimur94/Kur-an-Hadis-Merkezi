@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
-import { jsPDF } from "jspdf";
-import html2canvas from 'html2canvas';
+import jsPDF from "jspdf";
 import * as htmlToImage from 'html-to-image';
 import * as pako from 'pako';
 import Spinner from './Spinner';
 import { HighlightableText } from './Lugat';
 import type { ArastirmaRaporu, IlmiArastirmaHistoryItem as HistoryItem } from '../types';
+import { amiriFont } from './AmiriFont.js';
+
 
 // --- ICONS ---
 const HomeIcon: React.FC<{ className?: string }> = ({ className }) => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-6 h-6"}><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /></svg>);
@@ -33,6 +34,155 @@ const loadingMessages = [
 
 type Message = { role: 'user', content: string } | { role: 'model', content: ArastirmaRaporu };
 
+const arastirmaRaporuSchema = {
+    type: Type.OBJECT,
+    properties: {
+        konuBasligi: { type: Type.STRING },
+        girisOzeti: { type: Type.STRING },
+        adimAdimAnlatim: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    adim: { type: Type.STRING },
+                    aciklama: { type: Type.STRING },
+                },
+            },
+        },
+        kuranDelilleri: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    referans: { type: Type.STRING },
+                    arapca: { type: Type.STRING },
+                    meal: { type: Type.STRING },
+                },
+            },
+        },
+        hadisDelilleri: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    kaynak: { type: Type.STRING },
+                    arapca: { type: Type.STRING },
+                    turkce: { type: Type.STRING },
+                    rivayetEden: { type: Type.STRING },
+                },
+                 required: ['kaynak', 'turkce', 'rivayetEden'],
+            },
+        },
+        fikihHukumleri: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    mezhep: { type: Type.STRING },
+                    hukum: { type: Type.STRING },
+                    kaynak: { type: Type.STRING },
+                },
+            },
+        },
+        risaleINurPerspektifi: {
+            type: Type.OBJECT,
+            properties: {
+                ozet: { type: Type.STRING },
+                iktibaslar: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            metin: { type: Type.STRING },
+                            kaynak: { type: Type.STRING },
+                        },
+                    },
+                },
+            },
+        },
+        ilgiliDualar: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    arapca: { type: Type.STRING },
+                    okunus: { type: Type.STRING },
+                    anlam: { type: Type.STRING },
+                    kaynak: { type: Type.STRING },
+                },
+            },
+        },
+    },
+};
+
+const PresentationCard: React.FC<{ question: string; response: ArastirmaRaporu }> = ({ question, response }) => {
+    return (
+        <div className="p-16 font-sans bg-gradient-to-br from-[#0a192f] via-[#112240] to-[#0a192f] text-gray-200 w-full">
+            <header className="text-center mb-12 border-b-2 border-amber-400/30 pb-6">
+                <p className="text-2xl text-amber-300 font-light font-orbitron tracking-widest">Dijital Medrese</p>
+                <h1 className="text-5xl font-bold mt-4 text-white font-amiri">{response.konuBasligi}</h1>
+            </header>
+
+            <section className="mb-10">
+                <h2 className="text-3xl font-semibold text-sky-300 mb-4 font-orbitron tracking-wide">Özet</h2>
+                <p className="text-lg text-gray-300 leading-relaxed">{response.girisOzeti}</p>
+            </section>
+            
+            {response.kuranDelilleri?.length && (
+                <section className="mb-10">
+                    <h2 className="text-3xl font-semibold text-sky-300 mb-4 font-orbitron tracking-wide">Kur'an'dan Deliller</h2>
+                    <div className="space-y-6">
+                        {response.kuranDelilleri.map((item, i) => (
+                             <div key={i} className="border-l-4 border-green-400 pl-6">
+                                <blockquote dir="rtl" className="italic text-gray-200 text-3xl font-amiri mb-3">{item.arapca}</blockquote>
+                                <blockquote className="italic text-gray-300 text-lg">"{item.meal}"</blockquote>
+                                <p className="text-right text-sm text-gray-400 mt-2 font-mono">{item.referans}</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {response.hadisDelilleri?.length && (
+                <section className="mb-10">
+                     <h2 className="text-3xl font-semibold text-sky-300 mb-4 font-orbitron tracking-wide">Hadis-i Şerifler</h2>
+                    <div className="space-y-6">
+                        {response.hadisDelilleri.map((item, i) => (
+                             <div key={i} className="border-l-4 border-blue-400 pl-6">
+                                {item.arapca && <blockquote dir="rtl" className="italic text-gray-200 text-2xl font-amiri mb-3">{item.arapca}</blockquote>}
+                                {item.rivayetEden && <p className="font-semibold text-md text-gray-400 mb-2">{item.rivayetEden} rivayet ediyor:</p>}
+                                <blockquote className="italic text-gray-300 text-lg">"{item.turkce}"</blockquote>
+                                <p className="text-right text-sm text-gray-400 mt-2 font-mono">{item.kaynak}</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+            {response.risaleINurPerspektifi && (response.risaleINurPerspektifi.ozet || response.risaleINurPerspektifi.iktibaslar?.length) ? (
+                 <section className="mb-10">
+                     <h2 className="text-3xl font-semibold text-sky-300 mb-4 font-orbitron tracking-wide">Risale-i Nur Perspektifi</h2>
+                      {response.risaleINurPerspektifi.ozet && <p className="text-lg text-gray-300 leading-relaxed italic mb-6">{response.risaleINurPerspektifi.ozet}</p>}
+                    {response.risaleINurPerspektifi.iktibaslar && response.risaleINurPerspektifi.iktibaslar.length > 0 && (
+                        <div className="space-y-6">
+                            {response.risaleINurPerspektifi.iktibaslar?.map((item, i) => (
+                                <div key={i} className="border-l-4 border-purple-400 pl-6">
+                                    <blockquote className="italic text-gray-300 text-lg">"{item.metin}"</blockquote>
+                                    <p className="text-right text-sm text-gray-400 mt-2 font-mono">{item.kaynak}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </section>
+            ) : null}
+
+            <footer className="text-center mt-16 text-md text-gray-500 font-orbitron tracking-widest">
+                Dijital Medrese - Kapsamlı Arama
+            </footer>
+        </div>
+    );
+};
+
 const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
     const [messages, setMessages] = useState<Message[]>([]);
     const [userInput, setUserInput] = useState('');
@@ -48,10 +198,12 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
     const [sharingId, setSharingId] = useState<string | null>(null);
     const [exportingState, setExportingState] = useState<{ index: number; type: 'copy' | 'png' | 'pdf' } | null>(null);
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+    const [presentationData, setPresentationData] = useState<{ question: string; response: ArastirmaRaporu; type: 'png' } | null>(null);
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const raporRefs = useRef<(HTMLDivElement | null)[]>([]);
     const loadingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const presentationRef = useRef<HTMLDivElement>(null);
     const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
@@ -73,9 +225,9 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
             const storedHistory = localStorage.getItem('ilmiArastirmaHistory');
             if (storedHistory) setHistory(JSON.parse(storedHistory));
 
-            const importedDataString = sessionStorage.getItem('importedDataFor_ilmi-arastirma');
+            const importedDataString = sessionStorage.getItem('importedDataFor_ilmiArastirma');
             if (importedDataString) {
-                sessionStorage.removeItem('importedDataFor_ilmi-arastirma');
+                sessionStorage.removeItem('importedDataFor_ilmiArastirma');
                 const importedItem: HistoryItem = JSON.parse(importedDataString);
                 setHistory(prev => {
                     if (prev.some(item => item.id === importedItem.id)) return prev;
@@ -112,6 +264,32 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
         };
     }, [isLoading]);
 
+    useEffect(() => {
+        if (!presentationData || !presentationRef.current) return;
+
+        const node = presentationRef.current;
+        const { response, type } = presentationData;
+        const filename = `kapsamli-arama-${response.konuBasligi.replace(/[\s/\\?%*:|"<>]/g, '_')}`;
+
+        if (type === 'png') {
+            htmlToImage.toPng(node, { pixelRatio: 2, cacheBust: true, backgroundColor: '#0a192f' })
+                .then((dataUrl) => {
+                    const link = document.createElement('a');
+                    link.download = `${filename}.png`;
+                    link.href = dataUrl;
+                    link.click();
+                })
+                .catch((err) => {
+                    setError("PNG oluşturulamadı.");
+                    console.error(err);
+                })
+                .finally(() => {
+                    setPresentationData(null);
+                    setExportingState(null);
+                });
+        }
+    }, [presentationData]);
+
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!userInput.trim() || isLoading) return;
@@ -127,14 +305,30 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
     const getAIResponse = async (query: string) => {
         setIsLoading(true);
         setError(null);
+        
+        const systemInstruction = `Sen, İslam ilimlerinde son derece derin bir vukufiyete sahip bir baş araştırmacısın. Görevin, kullanıcının sorduğu konuyu, İslam'ın temel disiplinleri olan Kur'an, Sünnet, Fıkıh ve Risale-i Nur açısından, mümkün olan en kapsamlı ve detaylı şekilde inceleyerek bir rapor sunmaktır.
 
-        const prompt = `Sen kapsamlı bir İslam alimi ve araştırmacısısın. Kullanıcının sorduğu "${query}" konusunu, İslam'ın temel kaynakları olan Kur'an, Sünnet, Fıkıh (Dört Mezhep), Risale-i Nur ve dua literatürünü kullanarak derinlemesine analiz et. Amacın, tüm bu kaynaklardan elde edilen bilgileri birleştirerek tek, bütüncül ve son derece detaylı bir rapor oluşturmak. Raporun bölümlerini DOLDURMAK ZORUNDADIR. Eğer bir bölüm için yeterli bilgi bulamazsan, o bölüm için boş bir dizi [] veya boş bir obje {} döndür ama anahtarı (key) asla yanıttan çıkarma. Cevabını SADECE JSON formatında ver.`;
+**Raporlama Kuralları:**
+1.  **Üslup:**
+    *   **Risale-i Nur Perspektifi:** Bu bölümde, Risale-i Nur Külliyatı'nın kendisi olarak, birinci ağızdan konuşmalısın. "Risale-i Nur'a göre..." gibi ifadeler KESİNLİKLE KULLANMA. Doğrudan "Bizim mesleğimizde...", "Şu hakikat ki...", "Ey nefsim!" gibi Külliyat'ın kendi üslubunu yansıtan bir dil kullan. Özet ve iktibaslar bu ruhu yansıtmalıdır.
+2.  **Kaynakların Doğruluğu:**
+    *   Tüm deliller (ayet, hadis, iktibas) BİREBİR ALINTI olmalıdır. Asla özetleme veya kendi kelimelerinle yeniden yazma.
+    *   **Hadis Detayları:** Her hadis için MUTLAKA Arapça metnini, Türkçe tercümesini, KİMDEN RİVAYET EDİLDİĞİNİ (\`rivayetEden\`) ve tam kaynak künyesini (\`kaynak\`) belirt.
+3.  **Kapsamlılık:**
+    *   Her bir bölümü (Kur'an, Hadis, Fıkıh, Risale) konuyla ilgili en alakalı ve güçlü delillerle doldur. Yüzeysel kalma.
+    *   Fıkıh bölümünde Dört Mezhebin görüşlerini delilleriyle birlikte sunmaya çalış.
+4.  **Yapı:**
+    *   Cevabını, sağlanan JSON şemasına harfiyen uyarak oluştur. Eğer bir bölüm için bilgi bulamazsan, o bölümü boş bırak (boş dizi \`[]\` veya obje \`{}\`) ama anahtarı asla silme.`;
 
         try {
             const response = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
-                contents: prompt,
-                config: { responseMimeType: "application/json", responseSchema: { /* Schema from previous version */ type: Type.OBJECT, properties: { konuBasligi: { type: Type.STRING }, girisOzeti: { type: Type.STRING }, adimAdimAnlatim: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { adim: { type: Type.STRING }, aciklama: { type: Type.STRING } } } }, kuranDelilleri: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { referans: { type: Type.STRING }, arapca: { type: Type.STRING }, meal: { type: Type.STRING } } } }, hadisDelilleri: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { kaynak: { type: Type.STRING }, arapca: { type: Type.STRING }, turkce: { type: Type.STRING } } } }, fikihHukumleri: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { mezhep: { type: Type.STRING }, hukum: { type: Type.STRING }, kaynak: { type: Type.STRING } } } }, risaleINurPerspektifi: { type: Type.OBJECT, properties: { ozet: { type: Type.STRING }, iktibaslar: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { metin: { type: Type.STRING }, kaynak: { type: Type.STRING } } } } } }, ilgiliDualar: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { arapca: { type: Type.STRING }, okunus: { type: Type.STRING }, anlam: { type: Type.STRING }, kaynak: { type: Type.STRING } } } } } } }
+                contents: `Kullanıcının sorusu: "${query}"`,
+                config: {
+                    systemInstruction,
+                    responseMimeType: "application/json",
+                    responseSchema: arastirmaRaporuSchema
+                }
             });
             const data: ArastirmaRaporu = JSON.parse(response.text.trim());
             const newAiMessage: Message = { role: 'model', content: data };
@@ -165,7 +359,7 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
             let binaryString = '';
             for (let i = 0; i < compressed.length; i++) binaryString += String.fromCharCode(compressed[i]);
             const encodedData = btoa(binaryString);
-            const shareUrl = `${window.location.origin}${window.location.pathname}#/?module=ilmi-arastirma&v=2&data=${encodeURIComponent(encodedData)}`;
+            const shareUrl = `${window.location.origin}${window.location.pathname}#/?module=ilmiArastirma&v=2&data=${encodeURIComponent(encodedData)}`;
             navigator.clipboard.writeText(shareUrl);
             showNotification('Paylaşım linki kopyalandı!');
         } catch (err) {
@@ -175,52 +369,168 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
         }
     };
     
-    // Export Functions
+    const generatePdf = async (rapor: ArastirmaRaporu) => {
+        const doc = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+    
+        doc.addFileToVFS('Amiri-Regular.ttf', amiriFont);
+        doc.addFont('Amiri-Regular.ttf', 'Amiri', 'normal');
+    
+        const MARGIN = 15;
+        const PAGE_WIDTH = doc.internal.pageSize.getWidth();
+        const PAGE_HEIGHT = doc.internal.pageSize.getHeight();
+        const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
+        let y = MARGIN;
+    
+        const checkPageBreak = (neededHeight: number) => {
+            if (y + neededHeight > PAGE_HEIGHT - MARGIN) {
+                doc.addPage();
+                y = MARGIN;
+            }
+        };
+    
+        const renderTitle = (text: string) => {
+            doc.setFont('Amiri', 'normal');
+            doc.setFontSize(22);
+            doc.setTextColor(34, 197, 94);
+            const lines = doc.splitTextToSize(text, CONTENT_WIDTH);
+            checkPageBreak(lines.length * 10);
+            doc.text(lines, PAGE_WIDTH / 2, y, { align: 'center' });
+            y += lines.length * 10 + 5;
+        };
+    
+        const renderSubheader = (text: string) => {
+            checkPageBreak(12);
+            doc.setFont('Amiri', 'normal');
+            doc.setFontSize(16);
+            doc.setTextColor(23, 37, 84);
+            doc.text(text, MARGIN, y);
+            y += 8;
+            doc.setDrawColor(23, 37, 84);
+            doc.line(MARGIN, y, MARGIN + CONTENT_WIDTH, y);
+            y += 6;
+        };
+    
+        const renderBodyText = (text: string, isItalic = false) => {
+            doc.setFont('Amiri', 'normal');
+            doc.setFontSize(11);
+            doc.setTextColor(51, 65, 85);
+            const lines = doc.splitTextToSize(text, CONTENT_WIDTH);
+            checkPageBreak(lines.length * 5 + 4);
+            doc.text(lines, MARGIN, y);
+            y += lines.length * 5 + 4;
+        };
+    
+        const renderArabicText = (text: string) => {
+            doc.setFont('Amiri', 'normal');
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            const lines = doc.splitTextToSize(text, CONTENT_WIDTH);
+            checkPageBreak(lines.length * 7 + 4);
+            doc.text(lines, PAGE_WIDTH - MARGIN, y, { align: 'right' });
+            y += lines.length * 7 + 4;
+        };
+
+        const renderSourceText = (text: string) => {
+            doc.setFont('Amiri', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(100, 116, 139);
+             const lines = doc.splitTextToSize(text, CONTENT_WIDTH);
+            checkPageBreak(lines.length * 4 + 6);
+            doc.text(lines, PAGE_WIDTH - MARGIN, y, { align: 'right' });
+            y += lines.length * 4 + 6;
+        };
+    
+        renderTitle(rapor.konuBasligi);
+        
+        if (rapor.girisOzeti) {
+            renderSubheader("Özet");
+            renderBodyText(rapor.girisOzeti);
+        }
+    
+        if (rapor.kuranDelilleri?.length) {
+            renderSubheader("Kur'an'dan Deliller");
+            rapor.kuranDelilleri?.forEach(item => {
+                renderArabicText(item.arapca);
+                renderBodyText(`"${item.meal}"`, true);
+                renderSourceText(item.referans);
+            });
+        }
+    
+        if (rapor.hadisDelilleri?.length) {
+            renderSubheader("Hadis-i Şeriflerden Deliller");
+            rapor.hadisDelilleri?.forEach(item => {
+                if(item.arapca) renderArabicText(item.arapca);
+                renderBodyText(`${item.rivayetEden} rivayet ediyor: "${item.turkce}"`);
+                renderSourceText(item.kaynak);
+            });
+        }
+
+        if (rapor.risaleINurPerspektifi) {
+            renderSubheader("Risale-i Nur Perspektifi");
+            if(rapor.risaleINurPerspektifi.ozet) renderBodyText(rapor.risaleINurPerspektifi.ozet, true);
+            rapor.risaleINurPerspektifi.iktibaslar?.forEach(item => {
+                renderBodyText(`"${item.metin}"`);
+                renderSourceText(item.kaynak);
+            });
+        }
+
+        const pageCount = doc.internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFont('Amiri', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(150, 150, 150);
+            doc.text('Dijital Medrese - Kapsamlı Arama', MARGIN, 10);
+            doc.text(`Sayfa ${i} / ${pageCount}`, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 10, { align: 'right' });
+        }
+    
+        doc.save(`kapsamli-arama-${rapor.konuBasligi.replace(/[\s/\\?%*:|"<>]/g, '_')}.pdf`);
+    };
+
     const handleExport = async (index: number, type: 'copy' | 'png' | 'pdf') => {
         setExportingState({ index, type });
         const message = messages[index];
-        if (message.role !== 'model') return;
+        if (message.role !== 'model') {
+            setExportingState(null);
+            return;
+        }
         const rapor = message.content;
+        const userMessage = messages[index - 1];
+        const question = (userMessage && userMessage.role === 'user') ? userMessage.content : rapor.konuBasligi;
 
         if (type === 'copy') {
              let text = `KONU: ${rapor.konuBasligi}\n\n== ÖZET ==\n${rapor.girisOzeti}\n\n`;
-            if (rapor.adimAdimAnlatim?.length) { text += `== ADIM ADIM UYGULAMA ==\n`; rapor.adimAdimAnlatim.forEach(i => text += `* ${i.adim}:\n${i.aciklama}\n\n`); }
-            if (rapor.kuranDelilleri?.length) { text += `== KUR'AN'DAN DELİLLER ==\n`; rapor.kuranDelilleri.forEach(i => text += `- ${i.meal} (${i.referans})\n`); text += `\n`; }
-            if (rapor.hadisDelilleri?.length) { text += `== HADİS-İ ŞERİFLERDEN DELİLLER ==\n`; rapor.hadisDelilleri.forEach(i => text += `- ${i.turkce} (Kaynak: ${i.kaynak})\n`); text += `\n`; }
-            if (rapor.fikihHukumleri?.length) { text += `== FIKIH HÜKÜMLERİ (MEZHEPLERE GÖRE) ==\n`; rapor.fikihHukumleri.forEach(i => text += `* ${i.mezhep}:\n${i.hukum} (Kaynak: ${i.kaynak})\n\n`); }
-            if (rapor.risaleINurPerspektifi) { text += `== RİSALE-İ NUR PERSPEKTİFİ ==\n${rapor.risaleINurPerspektifi.ozet}\n`; rapor.risaleINurPerspektifi.iktibaslar.forEach(i => text += `\n> "${i.metin}" (${i.kaynak})\n`); text += `\n`; }
-            if (rapor.ilgiliDualar?.length) { text += `== İLGİLİ DUALAR ==\n`; rapor.ilgiliDualar.forEach(i => text += `- ${i.anlam} (Okunuşu: ${i.okunus})\n`); }
+            if (rapor.adimAdimAnlatim?.length) { text += `== ADIM ADIM UYGULAMA ==\n`; rapor.adimAdimAnlatim?.forEach(i => text += `* ${i.adim}:\n${i.aciklama}\n\n`); }
+            if (rapor.kuranDelilleri?.length) { text += `== KUR'AN'DAN DELİLLER ==\n`; rapor.kuranDelilleri?.forEach(i => text += `- ${i.meal} (${i.referans})\n`); text += `\n`; }
+            if (rapor.hadisDelilleri?.length) { text += `== HADİS-İ ŞERİFLERDEN DELİLLER ==\n`; rapor.hadisDelilleri?.forEach(i => text += `- ${i.rivayetEden} rivayet ediyor: "${i.turkce}" (Kaynak: ${i.kaynak})\n`); text += `\n`; }
+            if (rapor.fikihHukumleri?.length) { text += `== FIKIH HÜKÜMLERİ (MEZHEPLERE GÖRE) ==\n`; rapor.fikihHukumleri?.forEach(i => text += `* ${i.mezhep}:\n${i.hukum} (Kaynak: ${i.kaynak})\n\n`); }
+            if (rapor.risaleINurPerspektifi) { text += `== RİSALE-İ NUR PERSPEKTİFİ ==\n${rapor.risaleINurPerspektifi.ozet || ''}\n`; rapor.risaleINurPerspektifi.iktibaslar?.forEach(i => text += `\n> "${i.metin}" (${i.kaynak})\n`); text += `\n`; }
+            if (rapor.ilgiliDualar?.length) { text += `== İLGİLİ DUALAR ==\n`; rapor.ilgiliDualar?.forEach(i => text += `- ${i.anlam} (Okunuşu: ${i.okunus})\n`); }
             navigator.clipboard.writeText(text).then(() => { setCopiedIndex(index); setTimeout(() => setCopiedIndex(null), 2000); }).finally(() => setExportingState(null));
         } else if (type === 'png') {
-            const node = raporRefs.current[index];
-            if (!node) { setExportingState(null); return; }
-            try {
-                const dataUrl = await htmlToImage.toPng(node, { quality: 0.98, pixelRatio: 2 });
-                const link = document.createElement('a');
-                link.download = `ilmi-arastirma-${rapor.konuBasligi.replace(/\s/g, '_')}.png`;
-                link.href = dataUrl;
-                link.click();
-            } catch (err) { setError("PNG oluşturulamadı."); } finally { setExportingState(null); }
+            setPresentationData({ question, response: rapor, type });
         } else if (type === 'pdf') {
-             const node = raporRefs.current[index];
-            if (!node) { setExportingState(null); return; }
             try {
-                const canvas = await html2canvas(node, { scale: 2, useCORS: true });
-                const imgData = canvas.toDataURL('image/png');
-                const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
-                const pdfWidth = pdf.internal.pageSize.getWidth(); const pdfHeight = pdf.internal.pageSize.getHeight();
-                const ratio = canvas.width / pdfWidth; const imgHeight = canvas.height / ratio;
-                let heightLeft = imgHeight; let position = 0;
-                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight); heightLeft -= pdfHeight;
-                while (heightLeft > 0) { position = heightLeft - imgHeight; pdf.addPage(); pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight); heightLeft -= pdfHeight; }
-                pdf.save(`ilmi-arastirma-${rapor.konuBasligi.replace(/\s/g, '_')}.pdf`);
-            } catch (err) { setError("PDF oluşturulamadı."); } finally { setExportingState(null); }
+                await generatePdf(rapor);
+            } catch (err) {
+                 setError("PDF oluşturulamadı.");
+                 console.error(err);
+            } finally {
+                setExportingState(null);
+            }
         }
     };
 
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900 relative overflow-hidden">
             {notification && (<div className={`fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white z-50 animate-fade-in ${notification.type === 'success' ? 'bg-teal-500' : 'bg-red-500'}`}>{notification.message}</div>)}
+            {presentationData && (
+                <div className="absolute -left-[9999px] top-0 w-[1080px]">
+                    <div ref={presentationRef}>
+                        <PresentationCard question={presentationData.question} response={presentationData.response} />
+                    </div>
+                </div>
+            )}
             
             <aside className={`absolute top-0 left-0 h-full bg-white dark:bg-gray-800 shadow-lg transition-transform duration-300 ease-in-out z-30 flex flex-col ${isHistoryOpen ? 'translate-x-0' : '-translate-x-full'}`} style={{ width: '320px' }}>
                 <div className="p-4 border-b dark:border-gray-700 flex justify-between items-center"><h2 className="font-bold text-lg">Geçmiş Aramalar</h2><button onClick={() => setIsHistoryOpen(false)} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"><CloseIcon /></button></div>
@@ -230,7 +540,7 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
 
             <div className="flex flex-col flex-1 h-screen">
                 <header className="flex-shrink-0 bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center z-20">
-                    <div className="flex items-center space-x-2"><button onClick={() => setIsHistoryOpen(true)} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"><HistoryIcon className="w-5 h-5" /></button><div><h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">İlmî Araştırma</h1><p className="text-sm text-gray-500 dark:text-gray-400">Tüm kaynaklardan kapsamlı cevaplar.</p></div></div>
+                    <div className="flex items-center space-x-2"><button onClick={() => setIsHistoryOpen(true)} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"><HistoryIcon className="w-5 h-5" /></button><div><h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Kapsamlı Arama</h1><p className="text-sm text-gray-500 dark:text-gray-400">Tüm kaynaklardan derinlemesine cevaplar.</p></div></div>
                     <button onClick={onGoHome} className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-white dark:bg-gray-700 shadow-sm hover:bg-gray-100 dark:hover:bg-gray-600"><HomeIcon className="w-5 h-5" /><span>Anasayfa</span></button>
                 </header>
 
@@ -245,7 +555,21 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
                                     <button onClick={() => handleExport(index, 'png')} disabled={!!exportingState} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50">{exportingState?.index === index && exportingState.type === 'png' ? <MiniSpinner /> : <DownloadIcon className="w-5 h-5" />} PNG İndir</button>
                                     <button onClick={() => handleExport(index, 'pdf')} disabled={!!exportingState} className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-200 dark:bg-gray-700 rounded-md hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50">{exportingState?.index === index && exportingState.type === 'pdf' ? <MiniSpinner /> : <FileIcon className="w-5 h-5" />} PDF İndir</button>
                                 </div>
-                                <div ref={el => raporRefs.current[index] = el} className="p-4 sm:p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg"><h1 className="text-4xl font-bold text-center mb-8 text-teal-600 dark:text-teal-400">{msg.content.konuBasligi}</h1><section className="mb-8 p-6 bg-gray-50 dark:bg-gray-700/50 rounded-lg"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Özet</h2><p className="text-lg leading-relaxed"><HighlightableText>{msg.content.girisOzeti}</HighlightableText></p></section>{msg.content.adimAdimAnlatim?.length && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Adım Adım Uygulama</h2><ol className="list-decimal list-inside space-y-4">{msg.content.adimAdimAnlatim.map((item, i) => (<li key={i} className="text-lg"><strong className="font-semibold">{item.adim}:</strong> <HighlightableText>{item.aciklama}</HighlightableText></li>))}</ol></section>}{msg.content.kuranDelilleri?.length && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Kur'an'dan Deliller</h2>{msg.content.kuranDelilleri.map((item, i) => (<div key={i} className="p-4 mb-4 border-r-4 border-green-500 bg-green-50 dark:bg-gray-700/50 rounded-r-lg"><p dir="rtl" className="font-amiri text-2xl text-right mb-2">{item.arapca}</p><p className="italic">"<HighlightableText>{item.meal}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.referans}</p></div>))}</section>}{msg.content.hadisDelilleri?.length && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Hadis-i Şeriflerden Deliller</h2>{msg.content.hadisDelilleri.map((item, i) => (<div key={i} className="p-4 mb-4 border-r-4 border-blue-500 bg-blue-50 dark:bg-gray-700/50 rounded-r-lg">{item.arapca && <p dir="rtl" className="font-amiri text-xl text-right mb-2">{item.arapca}</p>}<p className="italic">"<HighlightableText>{item.turkce}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.kaynak}</p></div>))}</section>}{msg.content.fikihHukumleri?.length && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Fıkıh Hükümleri (Mezheplere Göre)</h2><div className="grid md:grid-cols-2 gap-4">{msg.content.fikihHukumleri.map((item, i) => (<div key={i} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"><h3 className="font-bold text-lg text-teal-600 dark:text-teal-400">{item.mezhep}</h3><p className="mt-2"><HighlightableText>{item.hukum}</HighlightableText></p><p className="text-right text-xs font-mono text-gray-500 dark:text-gray-400 mt-2">Kaynak: {item.kaynak}</p></div>))}</div></section>}{msg.content.risaleINurPerspektifi && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Risale-i Nur Perspektifi</h2><p className="italic mb-4"><HighlightableText>{msg.content.risaleINurPerspektifi.ozet}</HighlightableText></p>{msg.content.risaleINurPerspektifi.iktibaslar.map((item, i) => (<div key={i} className="p-4 border-r-4 border-purple-500 bg-purple-50 dark:bg-gray-700/50 rounded-r-lg"><p className="leading-relaxed">"<HighlightableText>{item.metin}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.kaynak}</p></div>))}</section>}{msg.content.ilgiliDualar?.length && <section><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">İlgili Dualar</h2>{msg.content.ilgiliDualar.map((item, i) => (<div key={i} className="p-4 mb-4 border-r-4 border-amber-500 bg-amber-50 dark:bg-gray-700/50 rounded-r-lg"><p dir="rtl" className="font-amiri text-2xl text-right mb-2">{item.arapca}</p><p className="italic text-sm text-gray-500 dark:text-gray-400 text-right mb-2">{item.okunus}</p><p className="italic">"<HighlightableText>{item.anlam}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.kaynak}</p></div>))}</section>}</div>
+                                <div ref={el => { raporRefs.current[index] = el; }} className="p-4 sm:p-8 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+                                    <h1 className="text-4xl font-bold text-center mb-8 text-teal-600 dark:text-teal-400">{msg.content.konuBasligi}</h1>
+                                    {msg.content.girisOzeti && (
+                                        <section className="mb-8 p-6 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                                            <h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Özet</h2>
+                                            <p className="text-lg leading-relaxed"><HighlightableText>{msg.content.girisOzeti}</HighlightableText></p>
+                                        </section>
+                                    )}
+                                    {msg.content.adimAdimAnlatim?.length && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Adım Adım Uygulama</h2><ol className="list-decimal list-inside space-y-4">{msg.content.adimAdimAnlatim?.map((item, i) => (<li key={i} className="text-lg"><strong className="font-semibold">{item.adim}:</strong> <HighlightableText>{item.aciklama}</HighlightableText></li>))}</ol></section>}
+                                    {msg.content.kuranDelilleri?.length && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Kur'an'dan Deliller</h2>{msg.content.kuranDelilleri?.map((item, i) => (<div key={i} className="p-4 mb-4 border-r-4 border-green-500 bg-green-50 dark:bg-gray-700/50 rounded-r-lg"><p dir="rtl" className="font-amiri text-2xl text-right mb-2">{item.arapca}</p><p className="italic">"<HighlightableText>{item.meal}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.referans}</p></div>))}</section>}
+                                    {msg.content.hadisDelilleri?.length && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Hadis-i Şeriflerden Deliller</h2>{msg.content.hadisDelilleri?.map((item, i) => (<div key={i} className="p-4 mb-4 border-r-4 border-blue-500 bg-blue-50 dark:bg-gray-700/50 rounded-r-lg">{item.arapca && <p dir="rtl" className="font-amiri text-xl text-right mb-2">{item.arapca}</p>}{item.rivayetEden && <p className="font-semibold text-sm text-gray-600 dark:text-gray-400 mb-2">{item.rivayetEden} rivayet ediyor:</p>}<p className="italic">"<HighlightableText>{item.turkce}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.kaynak}</p></div>))}</section>}
+                                    {msg.content.fikihHukumleri?.length && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Fıkıh Hükümleri (Mezheplere Göre)</h2><div className="grid md:grid-cols-2 gap-4">{msg.content.fikihHukumleri?.map((item, i) => (<div key={i} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"><h3 className="font-bold text-lg text-teal-600 dark:text-teal-400">{item.mezhep}</h3><p className="mt-2"><HighlightableText>{item.hukum}</HighlightableText></p><p className="text-right text-xs font-mono text-gray-500 dark:text-gray-400 mt-2">Kaynak: {item.kaynak}</p></div>))}</div></section>}
+                                    {msg.content.risaleINurPerspektifi && (msg.content.risaleINurPerspektifi.ozet || msg.content.risaleINurPerspektifi.iktibaslar?.length > 0) && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Risale-i Nur Perspektifi</h2>{msg.content.risaleINurPerspektifi.ozet && <p className="italic mb-4"><HighlightableText>{msg.content.risaleINurPerspektifi.ozet}</HighlightableText></p>}{msg.content.risaleINurPerspektifi.iktibaslar?.map((item, i) => (<div key={i} className="p-4 border-r-4 border-purple-500 bg-purple-50 dark:bg-gray-700/50 rounded-r-lg mt-2"><p className="leading-relaxed">"<HighlightableText>{item.metin}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.kaynak}</p></div>))}</section>}
+                                    {msg.content.ilgiliDualar?.length && <section><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">İlgili Dualar</h2>{msg.content.ilgiliDualar?.map((item, i) => (<div key={i} className="p-4 mb-4 border-r-4 border-amber-500 bg-amber-50 dark:bg-gray-700/50 rounded-r-lg"><p dir="rtl" className="font-amiri text-2xl text-right mb-2">{item.arapca}</p><p className="italic text-sm text-gray-500 dark:text-gray-400 text-right mb-2">{item.okunus}</p><p className="italic">"<HighlightableText>{item.anlam}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.kaynak}</p></div>))}</section>}
+                                </div>
                             </div>)}
                         </div>
                     ))}
