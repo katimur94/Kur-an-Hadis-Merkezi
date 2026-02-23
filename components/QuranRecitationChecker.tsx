@@ -161,6 +161,17 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
     const wordRefs = useRef<Record<number, HTMLSpanElement | null>>({});
     const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
     const ai = useRef(apiKey ? new GoogleGenAI({ apiKey }) : null);
+    const isRecordingIntent = useRef<boolean>(false);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            isRecordingIntent.current = false;
+            if (recognitionRef.current) {
+                try { recognitionRef.current.stop(); } catch (e) { }
+            }
+        };
+    }, []);
 
     // --- Effects ---
     const handleReset = useCallback(() => {
@@ -284,6 +295,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
     // --- Recitation & Navigation ---
     const handleReciteClick = () => {
         if (recitationStatus === 'recording') {
+            isRecordingIntent.current = false;
             recognitionRef.current?.stop();
         } else {
             setLiveTranscript('');
@@ -292,11 +304,14 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
             localStorage.removeItem(`recitationAnalysis_p${currentPage}`);
 
             setRecitationStatus('recording');
+            isRecordingIntent.current = true;
             setPageProgress(prev => ({ ...prev, [currentPage]: prev[currentPage] === 'completed' ? 'completed' : 'in_progress' }));
 
             const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SpeechRecognitionAPI) {
                 setError("Tarayıcınız konuşma tanımayı desteklemiyor.");
+                isRecordingIntent.current = false;
+                setRecitationStatus('idle');
                 return;
             }
             recognitionRef.current = new SpeechRecognitionAPI();
@@ -314,6 +329,17 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
             };
             recognitionRef.current.onstart = () => setRecitationStatus('recording');
             recognitionRef.current.onend = () => {
+                if (isRecordingIntent.current) {
+                    // Android devices often aggressively stop the recognition. Auto-restart it to keep continuous mode.
+                    try {
+                        recognitionRef.current?.start();
+                        return;
+                    } catch (e) {
+                        console.error('Failed to restart recognition', e);
+                    }
+                }
+
+                isRecordingIntent.current = false;
                 setRecitationStatus('recorded');
 
                 // Finalize and save progress
@@ -344,12 +370,23 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
             };
             recognitionRef.current.onerror = (event) => {
                 console.error("Speech recognition error", event.error);
-                if (event.error !== 'no-speech') {
+                if (event.error === 'not-allowed' || event.error === 'microphone' || event.error === 'service-not-allowed') {
+                    isRecordingIntent.current = false;
                     setError("Mikrofon hatası: " + event.error);
+                    setRecitationStatus('idle');
+                } else if (event.error !== 'no-speech') {
+                    // Let it try to restart in onend for other errors (like network/aborted/no-speech)
+                    console.log("Ignored error for auto-restart: ", event.error);
                 }
+            }
+
+            try {
+                recognitionRef.current.start();
+            } catch (e) {
+                console.error("Failed to start speech recognition", e);
+                isRecordingIntent.current = false;
                 setRecitationStatus('idle');
             }
-            recognitionRef.current.start();
         }
     };
 
