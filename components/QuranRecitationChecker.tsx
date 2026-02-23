@@ -108,7 +108,7 @@ const levenshtein = (a: string, b: string): number => {
     }
     return matrix[b.length][a.length];
 };
-const isSimilar = (a: string, b: string, threshold = 0.5): boolean => {
+const isSimilar = (a: string, b: string, threshold = 0.65): boolean => {
     const longerLength = Math.max(a.length, b.length);
     if (longerLength === 0) return true;
     const distance = levenshtein(a, b);
@@ -257,14 +257,12 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
 
         for (const spokenWord of spokenWords) {
             if (pageWordIdx >= pageWords.length) break;
-            const searchWindow = 5;
+            const searchWindow = 10;
             let foundMatch = false;
             for (let i = 0; i < searchWindow && (pageWordIdx + i) < pageWords.length; i++) {
                 const potentialTargetWord = pageWords[pageWordIdx + i];
                 if (isSimilar(normalizeText(spokenWord), normalizeText(potentialTargetWord))) {
-                    for (let j = 0; j < i; j++) {
-                        if (!sessionWordStatuses[pageWordIdx + j]) newStatuses[pageWordIdx + j] = { status: 'error' };
-                    }
+                    // Sadece doğru olanı renkli yap, atlananları kırmızı işaretleme (Android'de saçmalamasını önler)
                     if (!sessionWordStatuses[pageWordIdx + i]) newStatuses[pageWordIdx + i] = { status: 'correct' };
                     pageWordIdx += i + 1;
                     foundMatch = true;
