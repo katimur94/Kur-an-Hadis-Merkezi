@@ -1,0 +1,143 @@
+import axios from 'axios';
+import type { SurahSummary, CombinedAyah, Reciter, PlaylistItem } from '../types';
+
+const API_BASE_URL = 'https://api.alquran.cloud/v1';
+const AUDIO_BASE_URL = 'https://cdn.islamic.network/quran/audio/128';
+
+export const getSurahList = async (): Promise<SurahSummary[]> => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/surah`);
+        const surahs: SurahSummary[] = response.data.data.map((s: any) => ({
+            number: s.number,
+            name: s.name,
+            englishName: s.englishName,
+            revelationType: s.revelationType,
+            numberOfAyahs: s.numberOfAyahs,
+        }));
+        return surahs;
+    } catch (error) {
+        console.error("Error fetching surah list:", error);
+        throw new Error("Failed to fetch surah list");
+    }
+};
+
+export const getReciterList = async (): Promise<Reciter[]> => {
+    try {
+        // FIX: Corrected the endpoint to fetch audio editions.
+        const response = await axios.get(`${API_BASE_URL}/edition?format=audio`);
+        const reciters: Reciter[] = response.data.data
+            .map((r: any) => ({
+                id: r.identifier,
+                name: r.englishName,
+            }))
+            // Sort alphabetically by name for better UX
+            .sort((a: Reciter, b: Reciter) => a.name.localeCompare(b.name));
+
+        return reciters;
+    } catch (error) {
+        console.error("Error fetching dynamic reciter list:", error);
+        // Fallback to a stable list in case of API failure
+        return [
+            { id: 'ar.alafasy', name: 'Mishary Alafasy' },
+            { id: 'ar.abdulsamad', name: 'Abdul Basit' },
+            { id: 'ar.sudais', name: 'Abdurrahman As-Sudais' },
+            { id: 'ar.husary', name: 'Mahmoud Al-Husary' },
+            { id: 'ar.minshawi', name: 'Mohamed Siddiq El-Minshawi' },
+        ];
+    }
+};
+
+export const getPageDetail = async (page: number, reciterId: string): Promise<CombinedAyah[]> => {
+    try {
+        const [arabicRes, turkishRes] = await Promise.all([
+            axios.get(`${API_BASE_URL}/page/${page}/${reciterId}`),
+            axios.get(`${API_BASE_URL}/page/${page}/tr.diyanet`)
+        ]);
+
+        const arabicAyahs = arabicRes.data.data.ayahs;
+        const turkishAyahs = turkishRes.data.data.ayahs;
+
+        const combined: CombinedAyah[] = arabicAyahs.map((ayah: any) => {
+            const turkishAyah = turkishAyahs.find((t: any) => t.number === ayah.number);
+            return {
+                numberInSurah: ayah.numberInSurah,
+                arabicText: ayah.text,
+                turkishText: turkishAyah ? turkishAyah.text : 'Çeviri bulunamadı.',
+                audio: ayah.audio || '', // Use the audio URL from the reciter edition
+                number: ayah.number, // overall Ayah number
+                juz: ayah.juz,
+                page: ayah.page,
+                surah: {
+                    number: ayah.surah.number,
+                    name: ayah.surah.name,
+                    englishName: ayah.surah.englishName,
+                    revelationType: ayah.surah.revelationType,
+                },
+            };
+        });
+        return combined;
+    } catch (error) {
+        console.error(`Error fetching page ${page} detail:`, error);
+        throw new Error(`Failed to fetch page ${page}`);
+    }
+};
+
+export const getSurahDetailForPageJump = async (surahNumber: number): Promise<{ page: number }> => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/surah/${surahNumber}`);
+        // The page number of the first ayah of the surah is what we need.
+        const page = response.data.data.ayahs[0].page;
+        const result = { page };
+        return result;
+    } catch (error) {
+        console.error(`Error fetching surah ${surahNumber} for page jump:`, error);
+        throw new Error(`Failed to fetch surah ${surahNumber}`);
+    }
+};
+
+export const getAyahDetails = async (surahNumber: number, ayahInSurah: number): Promise<{ page: number, arabicText: string, number: number }> => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/ayah/${surahNumber}:${ayahInSurah}`);
+        const ayahData = response.data.data;
+        const result = {
+            page: ayahData.page,
+            arabicText: ayahData.text,
+            number: ayahData.number, // This is the overall Ayah number
+        };
+        return result;
+    } catch (error) {
+        console.error(`Error fetching details for Ayah ${surahNumber}:${ayahInSurah}`, error);
+        throw new Error(`Failed to fetch details for Ayah ${surahNumber}:${ayahInSurah}`);
+    }
+};
+
+const createPlaylistFromAyahs = (ayahs: any[]): PlaylistItem[] => {
+    return ayahs
+        .map(ayah => ({
+            ayahNumber: ayah.number,
+            audioUrl: ayah.audio,
+            pageNumber: ayah.page,
+        }))
+        .filter(item => item.audioUrl);
+};
+
+
+export const getJuzVerses = async (juzNumber: number, reciterId: string): Promise<PlaylistItem[]> => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/juz/${juzNumber}/${reciterId}`);
+        return createPlaylistFromAyahs(response.data.data.ayahs);
+    } catch (error) {
+        console.error(`Error fetching juz ${juzNumber} verses:`, error);
+        throw new Error(`Failed to fetch juz ${juzNumber}`);
+    }
+};
+
+export const getSurahVerses = async (surahNumber: number, reciterId: string): Promise<PlaylistItem[]> => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/surah/${surahNumber}/${reciterId}`);
+        return createPlaylistFromAyahs(response.data.data.ayahs);
+    } catch (error) {
+        console.error(`Error fetching surah ${surahNumber} verses:`, error);
+        throw new Error(`Failed to fetch surah ${surahNumber}`);
+    }
+};

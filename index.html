@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dijital Medrese</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Amiri+Quran&family=Noto+Naskh+Arabic:wght@400;700&family=Lateef&family=Scheherazade+New:wght@400;700&family=Reem+Kufi:wght@400;700&family=Markazi+Text:wght@400;700&family=Cairo:wght@400;700&family=Almarai:wght@400;700&family=Tajawal:wght@400;700&family=Katibeh&family=Inter:wght@400;500;600;700&family=Rakkas&family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet" crossorigin="anonymous">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-amiri { font-family: 'Amiri', serif; }
+        /* Custom scrollbar for a better look */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        html.dark ::-webkit-scrollbar-track { background: #2d3748; }
+        html.dark ::-webkit-scrollbar-thumb { background: #718096; }
+        html.dark ::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
+        /* Modal Animations */
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from { transform: scale(0.95); opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.3s ease-out;
+        }
+        .animate-scale-in {
+          animation: scaleIn 0.3s ease-out;
+        }
+        
+        /* Peygamberler Tarihi Styles */
+        .font-roboto { font-family: 'Roboto', sans-serif; }
+        .font-orbitron { font-family: 'Orbitron', sans-serif; }
+        .pt-range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 28px; height: 28px; background: #3b82f6; border: 4px solid #ffffff; border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px rgba(59, 130, 246, 0.7); transition: background .2s; }
+        .pt-range::-moz-range-thumb { width: 24px; height: 24px; background: #3b82f6; border: 4px solid #ffffff; border-radius: 50%; cursor: pointer; box-shadow: 0 0 10px rgba(59, 130, 246, 0.7); }
+        .emboss-card { background-color: #1f2937; border-radius: 16px; box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.2), 0 8px 16px rgba(0,0,0,0.4); border: 1px solid #4b5563; }
+        .emboss-button { transition: all 0.2s ease-in-out; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -2px rgba(0, 0, 0, 0.2); }
+        .emboss-button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3); }
+        .prophet-button { transition: all 0.2s ease-in-out; }
+        .prophet-button.active { background-color: #3b82f6; color: white; box-shadow: 0 0 15px rgba(59, 130, 246, 0.6); transform: scale(1.05); }
+        .pt-loader { border: 8px solid #f3f3f320; border-top: 8px solid #3b82f6; border-radius: 50%; width: 80px; height: 80px; animation: spin 1s linear infinite; }
+        .pt-mini-loader { border: 4px solid #f3f3f320; border-top: 4px solid #a78bfa; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .chat-bubble { max-width: 75%; padding: 10px 15px; border-radius: 20px; line-height: 1.4; }
+        .chat-bubble-user { background-color: #3b82f6; color: white; border-bottom-right-radius: 5px; align-self: flex-end; }
+        .chat-bubble-npc { background-color: #374151; color: #d1d5db; border-bottom-left-radius: 5px; align-self: flex-start; }
+        .typing-indicator span { height: 8px; width: 8px; background-color: #9ca3af; border-radius: 50%; display: inline-block; animation: bounce 1.4s infinite ease-in-out both; }
+        .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+        .quiz-option.correct { background-color: #22c55e !important; }
+        .quiz-option.incorrect { background-color: #ef4444 !important; }
+        .font-arabic { font-family: 'Amiri', 'Traditional Arabic', 'Scheherazade', serif; font-size: 1.5rem; }
+        .genealogy-list-item { position: relative; padding-left: 1.5rem; margin-left: 1rem; list-style: none; }
+        .genealogy-list-item:not(:first-child):before { content: ''; position: absolute; left: 0; top: -0.5rem; width: 1px; height: calc(100% + 0.5rem); background-color: #4b5563; }
+        .genealogy-list-item:after { content: ''; position: absolute; left: 0; top: 0.75rem; width: 1rem; height: 1px; background-color: #4b5563; }
+        .genealogy-list-item > ul { margin-left: 0; padding-left: 0; }
+        .genealogy-item-content { display: inline-block; padding-left: 0.5rem; }
+    </style>
+    <script>
+        // Set dark mode immediately to prevent flash of light mode
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.17.0",
+    "axios": "https://aistudiocdn.com/axios@^1.11.0",
+    "html-to-image": "https://aistudiocdn.com/html-to-image@^1.11.11",
+    "pako": "https://aistudiocdn.com/pako@^2.1.0",
+    "jspdf": "https://aistudiocdn.com/jspdf@^2.5.1",
+    "html2canvas": "https://aistudiocdn.com/html2canvas@^1.4.1",
+    "geomag": "https://aistudiocdn.com/geomag@^0.0.3",
+    "./components/AmiriFont.js": "./components/AmiriFont.js"
+  }
+}
+</script>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 antialiased">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
