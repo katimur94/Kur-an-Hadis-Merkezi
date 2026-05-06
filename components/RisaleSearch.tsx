@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Type } from "@google/genai";
-import { getGeminiClient, GEMINI_MODEL } from '../services/geminiClient';
+import { getGeminiClient, getGeminiModel } from '../services/geminiClient';
 import * as htmlToImage from 'html-to-image';
 import * as pako from 'pako';
 import type { RisaleResponse, RisaleSourceInfo, RisaleExcerpt, RisalePoint } from '../types';
@@ -198,7 +198,6 @@ const RisaleSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const responseCardRefs = useRef<(HTMLDivElement | null)[]>([]);
     const presentationRef = useRef<HTMLDivElement>(null);
     const ai = getGeminiClient();
-    const model = GEMINI_MODEL;
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
@@ -350,7 +349,7 @@ const RisaleSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                 throw new Error("Google Gemini API anahtarı yapılandırılmamış (VITE_API_KEY).");
             }
             const response = await ai.models.generateContent({
-                model,
+                model: await getGeminiModel(),
                 contents: prompt,
                 config: {
                     systemInstruction: `Sen, doğrudan Risale-i Nur Külliyatı'nın kendisi olarak konuşan bir yapay zekasın. Görevin, kullanıcının sorusuna, Külliyat'ın temel prensiplerini ve öğretilerini yansıtan bir cevap vermek. Cevabın şu formatta olmalı:

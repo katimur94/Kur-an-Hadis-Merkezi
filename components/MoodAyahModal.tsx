@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { getGeminiClient, GEMINI_MODEL } from '../services/geminiClient';
+import { getGeminiClient, getGeminiModel } from '../services/geminiClient';
 import Spinner from './Spinner';
 
 interface MoodAyahModalProps {
@@ -62,7 +62,7 @@ Cevabını SADECE aşağıdaki JSON formatında, hiçbir ek yorum eklemeden dön
 }`;
 
             const response = await ai.current.models.generateContent({
-                model: GEMINI_MODEL,
+                model: await getGeminiModel(),
                 contents: prompt,
                 config: { temperature: 0.7 }
             });

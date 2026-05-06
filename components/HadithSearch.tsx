@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Type } from "@google/genai";
-import { getGeminiClient, GEMINI_MODEL } from '../services/geminiClient';
+import { getGeminiClient, getGeminiModel } from '../services/geminiClient';
 import * as pako from 'pako';
 import type { AIHadithResponse, HadithResult, SourceInfo, ImamCommentary, FiqhSourceInfo } from '../types';
 import Spinner from './Spinner';
@@ -202,7 +202,6 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const lastQueryRef = useRef<string>('');
     const ai = getGeminiClient();
-    const model = GEMINI_MODEL;
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
@@ -274,7 +273,7 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                 throw new Error("Google Gemini API anahtarı yapılandırılmamış (VITE_API_KEY).");
             }
             const response = await ai.models.generateContent({
-                model,
+                model: await getGeminiModel(),
                 contents: prompt,
                 config: {
                     systemInstruction: `Sen Hadis ilimlerinde uzman bir İslam alimisin. Görevin, kullanıcının sorgusuyla ilgili sahih hadisleri bulmaktır. Kesinlikle kendi yorumunu veya özetini ekleme. Sadece hadisleri ve kaynaklarını listele. İlk cevapta en fazla 5 hadis sun. Eğer konuyla ilgili daha fazla hadis bulursan, 'hasMore' alanını 'true' olarak ayarla. Bulduğun her hadis için şu bilgileri yapılandırılmış bir formatta sunmalısın: 1. Hadisin orijinal Arapça metni. 2. Hadisin tam Türkçe çevirisi. 3. Hadisi kimin rivayet ettiği (örneğin, "Hz. Ebu Hureyre (r.a.) rivayet ediyor:"). 4. Detaylı kaynak bilgisini 'source' objesi içinde yapılandırılmış olarak sunmalısın. Bu obje 'book' (örn: Sahih-i Buhari), 'chapter' (örn: Kitabu'l-İman), 'hadithNumber' (örn: 5), ve MÜMKÜNSE 'volume' ve 'pageNumber' alanlarını içermelidir. Sadece tanınmış Sahih koleksiyonlardan bilgi ver.`,
@@ -439,7 +438,7 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
             const prompt = `Sen fıkıh ve hadis ilimlerinde uzman bir alimsin. Aşağıda metni verilen hadis özelinde, Dört Büyük Sünni Mezhep İmamı'nın (İmam Ebu Hanife, İmam Şafii, İmam Malik, İmam Ahmed bin Hanbel) görüşlerini, bu hadisten çıkardıkları hükümleri veya yorumlarını açıkla. Her imamın görüşünü ayrı ayrı belirt ve her görüş için bu bilginin kaynağını (eser adı, yazar, mümkünse cilt ve sayfa numarası) yapılandırılmış bir 'source' nesnesi içinde ver. Eğer bir imamın bu hadisle ilgili özel bir görüşü yoksa bunu da belirt.\n\nHadis:\nArapça: ${hadith.arabicText}\nTürkçe: "${hadith.turkishText}"`;
 
             const response = await ai.models.generateContent({
-                model,
+                model: await getGeminiModel(),
                 contents: prompt,
                 config: {
                     responseMimeType: "application/json",

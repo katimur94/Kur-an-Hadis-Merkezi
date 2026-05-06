@@ -1,7 +1,7 @@
 
 import React, { createContext, useState, useContext, useCallback, ReactNode, useRef, useEffect } from 'react';
 import { Type } from "@google/genai";
-import { getGeminiClient, GEMINI_MODEL } from '../services/geminiClient';
+import { getGeminiClient, getGeminiModel } from '../services/geminiClient';
 import Spinner from './Spinner';
 import { GlobalTextSelection } from './GlobalTextSelection';
 
@@ -63,7 +63,6 @@ export const useLugat = () => {
 
 // --- API ---
 const ai = getGeminiClient();
-const model = GEMINI_MODEL;
 
 // --- HIGHLIGHTER COMPONENT ---
 export const HighlightableText: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -346,7 +345,7 @@ export const LugatContextProvider: React.FC<{ children: ReactNode }> = ({ childr
             const prompt = `Sen hem klasik Arapça hem de Osmanlı/Modern Türkçe'ye hakim, İslami terminoloji ve dilbilim uzmanısın. Şu terim için kısa ve öz bir sözlük tanımı sağla: "${term}". Cevabını JSON formatında yapılandır. Eğer terimin birden fazla farklı anlamı varsa, en yaygın olanını ana 'definition' olarak sağla ve diğerlerini 'otherMeanings' dizisinde listele. Başka anlamı yoksa, dizi boş olmalı. Ayrıca kelimenin öncelikli olarak 'Arapça', 'Türkçe' veya 'Farsça' vb. olup olmadığını belirten bir 'sourceLanguage' alanı ekle. Cevabın tamamen Türkçe olmalıdır.`;
 
             const response = await ai.models.generateContent({
-                model,
+                model: await getGeminiModel(),
                 contents: prompt,
                 config: {
                     responseMimeType: "application/json",

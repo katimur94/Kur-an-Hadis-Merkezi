@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Type } from "@google/genai";
-import { getGeminiClient, GEMINI_MODEL } from '../services/geminiClient';
+import { getGeminiClient, getGeminiModel } from '../services/geminiClient';
 import * as htmlToImage from 'html-to-image';
 import * as pako from 'pako';
 import type { DuaResponse, DuaSourceInfo } from '../types';
@@ -105,7 +105,6 @@ const DuaSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const responseCardRefs = useRef<(HTMLDivElement | null)[]>([]);
     const presentationRef = useRef<HTMLDivElement>(null);
     const ai = getGeminiClient();
-    const model = GEMINI_MODEL;
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
@@ -220,7 +219,7 @@ const DuaSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                 throw new Error("Google Gemini API anahtarı yapılandırılmamış (VITE_API_KEY).");
             }
             const response = await ai.models.generateContent({
-                model,
+                model: await getGeminiModel(),
                 contents: prompt,
                 config: {
                     systemInstruction: `Sen, Kur'an ve Sünnet'teki dualar (Dua) ve zikirler (Zikir) konusunda uzman bir İslam alimisin. Görevin, kullanıcının sorgusuna göre ilgili duayı veya zikri tüm detaylarıyla sunmaktır. Cevabın MUTLAKA aşağıdaki anahtarlara sahip bir JSON objesi olmalıdır:

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Type } from "@google/genai";
-import { getGeminiClient, GEMINI_MODEL } from '../services/geminiClient';
+import { getGeminiClient, getGeminiModel } from '../services/geminiClient';
 import jsPDF from "jspdf";
 import * as htmlToImage from 'html-to-image';
 import * as pako from 'pako';
@@ -326,7 +326,7 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
                 throw new Error("Google Gemini API anahtarı yapılandırılmamış (VITE_API_KEY).");
             }
             const response = await ai.models.generateContent({
-                model: GEMINI_MODEL,
+                model: await getGeminiModel(),
                 contents: `Kullanıcının sorusu: "${query}"`,
                 config: {
                     systemInstruction,

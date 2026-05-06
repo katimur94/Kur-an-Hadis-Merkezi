@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Type } from "@google/genai";
-import { getGeminiClient, GEMINI_MODEL } from '../services/geminiClient';
+import { getGeminiClient, getGeminiModel } from '../services/geminiClient';
 import * as htmlToImage from 'html-to-image';
 
 // --- TYPES & INTERFACES ---
@@ -200,7 +200,7 @@ const PeygamberlerTarihi: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) =>
                 config.responseSchema = schema;
             }
             const response = await ai.current.models.generateContent({
-                model: GEMINI_MODEL,
+                model: await getGeminiModel(),
                 contents: prompt,
                 config,
             });

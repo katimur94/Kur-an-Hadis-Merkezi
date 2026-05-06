@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Type } from "@google/genai";
-import { getGeminiClient, GEMINI_MODEL } from '../services/geminiClient';
+import { getGeminiClient, getGeminiModel } from '../services/geminiClient';
 import { getSurahList, getPageDetail, getSurahDetailForPageJump } from '../services/api';
 import { surahPageRanges } from '../services/quranData';
 import type { SurahSummary, CombinedAyah, WordAnalysisResult, PageAnalysis } from '../types';
@@ -413,7 +413,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
 
         try {
             const response = await ai.current.models.generateContent({
-                model: GEMINI_MODEL,
+                model: await getGeminiModel(),
                 contents: prompt,
                 config: {
                     responseMimeType: "application/json",
