@@ -1,6 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 
-export const GEMINI_MODEL = 'gemini-2.5-flash';
+export const GEMINI_MODEL = 'gemini-3.1-flash-lite';
 
 export const getGeminiApiKey = (): string => {
     const viteKey = import.meta.env?.VITE_API_KEY;
