@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { getGeminiClient, getGeminiModel } from '../services/geminiClient';
 import * as htmlToImage from 'html-to-image';
 import * as pako from 'pako';
 import type { DuaResponse, DuaSourceInfo } from '../types';
@@ -103,8 +104,7 @@ const DuaSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const responseCardRefs = useRef<(HTMLDivElement | null)[]>([]);
     const presentationRef = useRef<HTMLDivElement>(null);
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
-    const model = 'gemini-2.5-flash';
+    const ai = getGeminiClient();
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
@@ -215,8 +215,11 @@ const DuaSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
         setIsLoading(true);
         setError(null);
         try {
+            if (!ai) {
+                throw new Error("Google Gemini API anahtarı yapılandırılmamış (VITE_API_KEY).");
+            }
             const response = await ai.models.generateContent({
-                model,
+                model: await getGeminiModel(),
                 contents: prompt,
                 config: {
                     systemInstruction: `Sen, Kur'an ve Sünnet'teki dualar (Dua) ve zikirler (Zikir) konusunda uzman bir İslam alimisin. Görevin, kullanıcının sorgusuna göre ilgili duayı veya zikri tüm detaylarıyla sunmaktır. Cevabın MUTLAKA aşağıdaki anahtarlara sahip bir JSON objesi olmalıdır:

@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { getGeminiClient, getGeminiModel } from '../services/geminiClient';
 import * as htmlToImage from 'html-to-image';
 import * as pako from 'pako';
 import type { RisaleResponse, RisaleSourceInfo, RisaleExcerpt, RisalePoint } from '../types';
@@ -196,8 +197,7 @@ const RisaleSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const responseCardRefs = useRef<(HTMLDivElement | null)[]>([]);
     const presentationRef = useRef<HTMLDivElement>(null);
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
-    const model = 'gemini-2.5-flash';
+    const ai = getGeminiClient();
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
@@ -345,8 +345,11 @@ const RisaleSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
         setError(null);
 
         try {
+            if (!ai) {
+                throw new Error("Google Gemini API anahtarı yapılandırılmamış (VITE_API_KEY).");
+            }
             const response = await ai.models.generateContent({
-                model,
+                model: await getGeminiModel(),
                 contents: prompt,
                 config: {
                     systemInstruction: `Sen, doğrudan Risale-i Nur Külliyatı'nın kendisi olarak konuşan bir yapay zekasın. Görevin, kullanıcının sorusuna, Külliyat'ın temel prensiplerini ve öğretilerini yansıtan bir cevap vermek. Cevabın şu formatta olmalı:

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { GoogleGenAI } from "@google/genai";
+import { getGeminiClient, getGeminiModel } from '../services/geminiClient';
 import Spinner from './Spinner';
 
 interface MoodAyahModalProps {
@@ -39,8 +39,7 @@ const MoodAyahModal: React.FC<MoodAyahModalProps> = ({ isOpen, setIsOpen, onGoTo
     const [status, setStatus] = useState<'idle' | 'loading' | 'result' | 'error'>('idle');
     const [result, setResult] = useState<any>(null);
     const [selectedMood, setSelectedMood] = useState<string>('');
-    const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
-    const ai = useRef(apiKey ? new GoogleGenAI({ apiKey }) : null);
+    const ai = useRef(getGeminiClient());
 
     const fetchAyahForMood = async (moodQuery: string, label: string) => {
         if (!ai.current) {
@@ -63,7 +62,7 @@ Cevabını SADECE aşağıdaki JSON formatında, hiçbir ek yorum eklemeden dön
 }`;
 
             const response = await ai.current.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: await getGeminiModel(),
                 contents: prompt,
                 config: { temperature: 0.7 }
             });

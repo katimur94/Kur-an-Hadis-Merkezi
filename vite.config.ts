@@ -4,11 +4,12 @@ import * as path from 'path'; // 👈 KORREKT: 'path' wird jetzt als Modul impor
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const apiKey = env.VITE_API_KEY || env.GEMINI_API_KEY || env.API_KEY || '';
     return {
         plugins: [tailwindcss()],
         define: {
-            'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-            'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+            'process.env.API_KEY': JSON.stringify(apiKey),
+            'process.env.GEMINI_API_KEY': JSON.stringify(apiKey)
         },
         resolve: {
             alias: {
