@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { getGeminiClient, GEMINI_MODEL } from '../services/geminiClient';
 import * as htmlToImage from 'html-to-image';
 import * as pako from 'pako';
 import type { FiqhResponse, FiqhSourceInfo } from '../types';
@@ -165,8 +166,8 @@ const FiqhChat: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const responseCardRefs = useRef<(HTMLDivElement | null)[]>([]);
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
-    const model = 'gemini-2.5-flash';
+    const ai = getGeminiClient();
+    const model = GEMINI_MODEL;
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
@@ -290,6 +291,9 @@ const FiqhChat: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
         setError(null);
 
         try {
+            if (!ai) {
+                throw new Error("Google Gemini API anahtarı yapılandırılmamış (VITE_API_KEY).");
+            }
             const response = await ai.models.generateContent({
                 model,
                 contents: prompt,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { getGeminiClient, GEMINI_MODEL } from '../services/geminiClient';
 import * as htmlToImage from 'html-to-image';
 
 // --- TYPES & INTERFACES ---
@@ -164,7 +165,7 @@ const PeygamberlerTarihi: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) =>
     const [presentationData, setPresentationData] = useState<GeneratedContent | null>(null);
     
     // Refs
-   const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
+   const ai = useRef(getGeminiClient());
     const presentationRef = useRef<HTMLDivElement>(null);
 
     // Effects
@@ -190,13 +191,16 @@ const PeygamberlerTarihi: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) =>
 
     const callGemini = useCallback(async (prompt: string, schema?: object): Promise<string> => {
         try {
+            if (!ai.current) {
+                throw new Error("Google Gemini API anahtarı yapılandırılmamış (VITE_API_KEY).");
+            }
             const config: { responseMimeType?: string, responseSchema?: object } = {};
             if (schema) {
                 config.responseMimeType = "application/json";
                 config.responseSchema = schema;
             }
             const response = await ai.current.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: GEMINI_MODEL,
                 contents: prompt,
                 config,
             });

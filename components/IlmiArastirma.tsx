@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { getGeminiClient, GEMINI_MODEL } from '../services/geminiClient';
 import jsPDF from "jspdf";
 import * as htmlToImage from 'html-to-image';
 import * as pako from 'pako';
@@ -204,7 +205,7 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
     const raporRefs = useRef<(HTMLDivElement | null)[]>([]);
     const loadingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const presentationRef = useRef<HTMLDivElement>(null);
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
+    const ai = getGeminiClient();
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
@@ -321,8 +322,11 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
     *   Cevabını, sağlanan JSON şemasına harfiyen uyarak oluştur. Eğer bir bölüm için bilgi bulamazsan, o bölümü boş bırak (boş dizi \`[]\` veya obje \`{}\`) ama anahtarı asla silme.`;
 
         try {
+            if (!ai) {
+                throw new Error("Google Gemini API anahtarı yapılandırılmamış (VITE_API_KEY).");
+            }
             const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: GEMINI_MODEL,
                 contents: `Kullanıcının sorusu: "${query}"`,
                 config: {
                     systemInstruction,

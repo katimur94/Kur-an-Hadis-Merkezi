@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { getGeminiClient, GEMINI_MODEL } from '../services/geminiClient';
 import * as pako from 'pako';
 import type { AIHadithResponse, HadithResult, SourceInfo, ImamCommentary, FiqhSourceInfo } from '../types';
 import Spinner from './Spinner';
@@ -200,8 +201,8 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
 
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const lastQueryRef = useRef<string>('');
-    const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string });
-    const model = 'gemini-2.5-flash';
+    const ai = getGeminiClient();
+    const model = GEMINI_MODEL;
 
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
         setNotification({ message, type });
@@ -269,6 +270,9 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
         }
 
         try {
+            if (!ai) {
+                throw new Error("Google Gemini API anahtarı yapılandırılmamış (VITE_API_KEY).");
+            }
             const response = await ai.models.generateContent({
                 model,
                 contents: prompt,
@@ -429,6 +433,9 @@ const HadithSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
         setIsFetchingCommentary(true);
 
         try {
+            if (!ai) {
+                throw new Error("Google Gemini API anahtarı yapılandırılmamış (VITE_API_KEY).");
+            }
             const prompt = `Sen fıkıh ve hadis ilimlerinde uzman bir alimsin. Aşağıda metni verilen hadis özelinde, Dört Büyük Sünni Mezhep İmamı'nın (İmam Ebu Hanife, İmam Şafii, İmam Malik, İmam Ahmed bin Hanbel) görüşlerini, bu hadisten çıkardıkları hükümleri veya yorumlarını açıkla. Her imamın görüşünü ayrı ayrı belirt ve her görüş için bu bilginin kaynağını (eser adı, yazar, mümkünse cilt ve sayfa numarası) yapılandırılmış bir 'source' nesnesi içinde ver. Eğer bir imamın bu hadisle ilgili özel bir görüşü yoksa bunu da belirt.\n\nHadis:\nArapça: ${hadith.arabicText}\nTürkçe: "${hadith.turkishText}"`;
 
             const response = await ai.models.generateContent({

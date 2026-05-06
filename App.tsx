@@ -14,7 +14,8 @@ import Zikirmatik from './components/Zikirmatik';
 import IlmiArastirma from './components/IlmiArastirma';
 import { LugatContextProvider } from './components/Lugat';
 import { getAyahDetails } from './services/api';
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { getGeminiClient, GEMINI_MODEL } from './services/geminiClient';
 import Spinner from './components/Spinner';
 import MoodAyahModal from './components/MoodAyahModal';
 import { GlobalNotesModal } from './components/GlobalNotesModal';
@@ -157,7 +158,7 @@ const App: React.FC = () => {
     const [isMoodModalOpen, setMoodModalOpen] = useState(false);
     const [isNotesModalOpen, setNotesModalOpen] = useState(false);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
-    const ai = useRef(new GoogleGenAI({ apiKey: import.meta.env.VITE_API_KEY as string }));
+    const ai = useRef(getGeminiClient());
 
     // --- Dashboard State ---
     const [prayerData, setPrayerData] = useState<PrayerData | null>(null);
@@ -341,11 +342,14 @@ const App: React.FC = () => {
     const fetchNewInspiration = useCallback(async () => {
         setIsInspirationLoading(true);
         try {
+            if (!ai.current) {
+                throw new Error("Google Gemini API anahtarı yapılandırılmamış (VITE_API_KEY).");
+            }
             const today = new Date().toDateString();
             const prompt = `Bugünün ilhamı için, önce belirli bir konuda (örneğin sabır, şükür, namaz, sadaka gibi) bir Kur'an ayeti seç. Bugünün tarihi ${new Date().toLocaleDateString('tr-TR')}, bu yüzden dünden farklı bir konu seçmeye çalış. Ardından, SEÇTİĞİN BU AYETTEKİ KONUYU DOĞRUDAN AÇIKLAYAN, DETAYLANDIRAN VEYA UYGULAMASINI GÖSTEREN sahih bir Hadis-i Şerif bul. Ayet ve hadis arasındaki bağlantı çok güçlü ve net olmalı. Bu ikisini tek bir JSON objesi olarak, başka hiçbir açıklama yapmadan döndür. ÖNEMLİ: Döndürülen JSON içindeki 'text' alanları (hem ayet hem de hadis için) MUTLAKA Türkçe olmalıdır. JSON objesi 'ayet' ve 'hadis' anahtarlarını içermelidir. Ayetin 'source' alanına Sure adını ve ayet numarasını yaz (örn: 'Bakara Suresi, 255. Ayet'). Hadisin 'sourceDetails' objesine ana koleksiyon (book), bölüm (chapter), hadis numarası (hadithNumber) ve MÜMKÜNSE cilt (volume) ile sayfa numarası (pageNumber) bilgilerini ekle. JSON'un şu yapıda olduğundan emin ol: { "ayet": { "type": "Ayet", "arabicText": "...", "text": "...", "source": "...", "surahNumber": 2, "ayahInSurah": 255 }, "hadis": { "type": "Hadis", "arabicText": "...", "text": "...", "source": "...", "narrator": "...", "sourceDetails": { "book": "...", "chapter": "...", "hadithNumber": "..." } } }`;
 
             const response = await ai.current.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: GEMINI_MODEL,
                 contents: prompt,
                 config: {
                     temperature: 0.7,
@@ -801,10 +805,15 @@ const App: React.FC = () => {
         setReciteState('processing');
         setReciteError(null);
         try {
+            if (!ai.current) {
+                setReciteError("Google Gemini API anahtarı yapılandırılmamış (VITE_API_KEY).");
+                setReciteState('error');
+                return;
+            }
             const prompt = `Sen bir Kur'an uzmanısın. Sana Kur'an'dan bir ayetin Arapça okunuşunun dökümünü vereceğim. Görevin, bu ayetin hangi sureye ait olduğunu, sure numarasını ve sure içindeki ayet numarasını tespit etmektir. Cevabını SADECE şu JSON formatında ver: {"surahName": "Al-Fatihah", "surahNumber": 1, "ayahNumberInSurah": 1}`;
 
             const response = await ai.current.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: GEMINI_MODEL,
                 contents: `${prompt}\n\nAyet dökümü: "${transcript}"`,
                 config: {
                     responseMimeType: "application/json",

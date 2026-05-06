@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { getGeminiClient, GEMINI_MODEL } from '../services/geminiClient';
 import { getSurahList, getPageDetail, getSurahDetailForPageJump } from '../services/api';
 import { surahPageRanges } from '../services/quranData';
 import type { SurahSummary, CombinedAyah, WordAnalysisResult, PageAnalysis } from '../types';
@@ -159,8 +160,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
     // Refs
     const recognitionRef = useRef<SpeechRecognition | null>(null);
     const wordRefs = useRef<Record<number, HTMLSpanElement | null>>({});
-    const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
-    const ai = useRef(apiKey ? new GoogleGenAI({ apiKey }) : null);
+    const ai = useRef(getGeminiClient());
     const isRecordingIntent = useRef<boolean>(false);
 
     // Cleanup on unmount
@@ -413,7 +413,7 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
 
         try {
             const response = await ai.current.models.generateContent({
-                model: 'gemini-2.5-flash',
+                model: GEMINI_MODEL,
                 contents: prompt,
                 config: {
                     responseMimeType: "application/json",

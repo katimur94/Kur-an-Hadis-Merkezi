@@ -1,6 +1,7 @@
 
 import React, { createContext, useState, useContext, useCallback, ReactNode, useRef, useEffect } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { getGeminiClient, GEMINI_MODEL } from '../services/geminiClient';
 import Spinner from './Spinner';
 import { GlobalTextSelection } from './GlobalTextSelection';
 
@@ -61,10 +62,8 @@ export const useLugat = () => {
 };
 
 // --- API ---
-const apiKey = import.meta.env.VITE_API_KEY as string | undefined;
-// Sadece API Key varsa başlat, yoksa null bırak
-const ai = apiKey ? new GoogleGenAI({ apiKey }) : null;
-const model = 'gemini-2.5-flash';
+const ai = getGeminiClient();
+const model = GEMINI_MODEL;
 
 // --- HIGHLIGHTER COMPONENT ---
 export const HighlightableText: React.FC<{ children: React.ReactNode }> = ({ children }) => {
