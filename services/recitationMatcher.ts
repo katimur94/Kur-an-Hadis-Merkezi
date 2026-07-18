@@ -3,9 +3,21 @@
 
 export type MatchStatus = 'correct' | 'skipped';
 
-/** Entfernt Harekat und vereinheitlicht Buchstabenvarianten für den Vergleich. */
+/**
+ * Entfernt Harekat UND alle Uthmani-/Koran-Annotationen für den Vergleich.
+ * Der Seitentext (quran-uthmani) enthält Zeichen, die kein ASR-Transkript je
+ * liefert: Wasla (U+0671), Dagger-Alif (U+0670), kleine Hochbuchstaben und
+ * Pausen-/Sajda-/Hizb-Zeichen (U+06D6–U+06ED), erweiterte Harekat
+ * (U+064B–U+065F, U+0610–U+061A, U+08D3–U+08FF), Tatweel und BOM.
+ * Ohne deren Entfernung scheitern v. a. kurze Wörter (بِهِۦ, لَهُۥ) am Match.
+ */
 export const normalizeText = (text: string): string =>
-    text.replace(/[\u064B-\u0652]/g, '').replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').trim();
+    text
+        .replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u0640\u08D3-\u08FF\uFEFF]/g, '')
+        .replace(/[أإآٱ]/g, 'ا')
+        .replace(/ى/g, 'ي')
+        .replace(/ة/g, 'ه')
+        .trim();
 
 export const levenshtein = (a: string, b: string): number => {
     const matrix = Array(b.length + 1).fill(null).map(() => Array(a.length + 1).fill(null));
@@ -40,6 +52,11 @@ export const isWordMatch = (spoken: string, target: string): boolean =>
 
 // Kleines Fenster gegen False-Positives bei sich wiederholenden Koranphrasen.
 const SEARCH_WINDOW = 6;
+// Erweiterte Suche für den Resync nach Erkennungslücken (Android-Restarts):
+// erst wenn zwei aufeinanderfolgende gesprochene Wörter weiter vorn im Text
+// nebeneinander wiedergefunden werden, springt der Cursor dorthin.
+const RESYNC_WINDOW = 30;
+const RESYNC_AFTER_MISSES = 2;
 
 export interface RecitationMatcher {
     /**
@@ -56,39 +73,109 @@ export const createRecitationMatcher = (
     sessionWordStatuses: Record<number, 'correct'>
 ): RecitationMatcher => {
     const normalizedPageWords = pageWords.map(normalizeText);
+    // Reine Symbol-Tokens (Hizb-Zeichen ۞, Sajda ۩, alleinstehende Pausenzeichen)
+    // normalisieren zu '' — sie sind "transparent": nie sprechbar, werden beim
+    // Vorbeikommen automatisch als gelesen markiert und blockieren das Fenster nicht.
+    const isTransparent = (idx: number): boolean => normalizedPageWords[idx] === '';
 
     let startIndex = 0;
-    while (startIndex < pageWords.length && sessionWordStatuses[startIndex]) startIndex++;
+    while (startIndex < pageWords.length && (sessionWordStatuses[startIndex] || isTransparent(startIndex))) startIndex++;
+
+    const baseStatuses = (): Record<number, MatchStatus> => {
+        const base: Record<number, MatchStatus> = {};
+        for (let i = startIndex; i < pageWords.length; i++) {
+            if (isTransparent(i)) base[i] = 'correct';
+        }
+        return base;
+    };
 
     let cursor = startIndex;
-    let committed: Record<number, MatchStatus> = {};
+    let committed: Record<number, MatchStatus> = baseStatuses();
     let processedFinalWords: string[] = [];
+    // Zuletzt nicht zuordenbare (finale) Wörter — Grundlage für den Resync.
+    let missBuffer: string[] = [];
+
+    interface MatchState {
+        cursor: number;
+        misses: string[];
+    }
+
+    /** Sucht `word` im Fenster ab `state.cursor`; markiert Treffer und Übersprungenes. */
+    const matchOne = (
+        word: string,
+        state: MatchState,
+        statuses: Record<number, MatchStatus>,
+        markSkipped: boolean,
+        allowResync: boolean
+    ): void => {
+        const normalized = normalizeText(word);
+        if (!normalized) return;
+        let slots = 0;
+        let p = state.cursor;
+        while (p < pageWords.length && slots < SEARCH_WINDOW) {
+            if (isTransparent(p)) { p++; continue; }
+            if (isNormalizedMatch(normalized, normalizedPageWords[p])) {
+                if (markSkipped) {
+                    for (let s = state.cursor; s < p; s++) {
+                        if (!isTransparent(s) && statuses[s] !== 'correct') statuses[s] = 'skipped';
+                    }
+                }
+                statuses[p] = 'correct';
+                state.cursor = p + 1;
+                state.misses = [];
+                return;
+            }
+            slots++;
+            p++;
+        }
+
+        // Kein Treffer im normalen Fenster.
+        state.misses.push(normalized);
+        if (state.misses.length > RESYNC_AFTER_MISSES) state.misses = state.misses.slice(-RESYNC_AFTER_MISSES);
+
+        // Resync: Durch Erkennungs-Restarts (v. a. Android) können ganze Passagen im
+        // Transcript fehlen; dann liegt die aktuelle Position weiter vorn im Text, als
+        // das Fenster reicht. Erst wenn zwei Miss-Wörter in Folge als benachbartes Paar
+        // im erweiterten Fenster auftauchen, springen wir dorthin — die übersprungenen
+        // Wörter bleiben unmarkiert (sie wurden nicht zwingend ausgelassen, sondern
+        // womöglich nur nicht gehört).
+        if (allowResync && state.misses.length >= RESYNC_AFTER_MISSES) {
+            const [first, second] = state.misses.slice(-2);
+            let q = state.cursor;
+            let scanned = 0;
+            while (q < pageWords.length - 1 && scanned < RESYNC_WINDOW) {
+                if (!isTransparent(q)) {
+                    let next = q + 1;
+                    while (next < pageWords.length && isTransparent(next)) next++;
+                    if (
+                        next < pageWords.length &&
+                        isNormalizedMatch(first, normalizedPageWords[q]) &&
+                        isNormalizedMatch(second, normalizedPageWords[next])
+                    ) {
+                        statuses[q] = 'correct';
+                        statuses[next] = 'correct';
+                        state.cursor = next + 1;
+                        state.misses = [];
+                        return;
+                    }
+                    scanned++;
+                }
+                q++;
+            }
+        }
+    };
 
     const matchWords = (
         words: string[],
-        fromCursor: number,
+        state: MatchState,
         statuses: Record<number, MatchStatus>,
-        markSkipped: boolean
-    ): number => {
-        let cur = fromCursor;
+        markSkipped: boolean,
+        allowResync: boolean
+    ): void => {
         for (const word of words) {
-            if (cur >= pageWords.length) break;
-            const normalized = normalizeText(word);
-            if (!normalized) continue;
-            for (let i = 0; i < SEARCH_WINDOW && cur + i < pageWords.length; i++) {
-                if (isNormalizedMatch(normalized, normalizedPageWords[cur + i])) {
-                    if (markSkipped) {
-                        for (let s = 0; s < i; s++) {
-                            if (statuses[cur + s] !== 'correct') statuses[cur + s] = 'skipped';
-                        }
-                    }
-                    statuses[cur + i] = 'correct';
-                    cur += i + 1;
-                    break;
-                }
-            }
+            if (state.cursor >= pageWords.length) break;
+            matchOne(word, state, statuses, markSkipped, allowResync);
         }
-        return cur;
     };
 
     return {
@@ -101,19 +188,25 @@ export const createRecitationMatcher = (
             if (!prefixUnchanged) {
                 // Recognition hat rückwirkend korrigiert → ab letztem stabilem Punkt (Session-Start) neu.
                 cursor = startIndex;
-                committed = {};
+                committed = baseStatuses();
                 processedFinalWords = [];
+                missBuffer = [];
             }
 
             const newWords = finalWords.slice(processedFinalWords.length);
-            cursor = matchWords(newWords, cursor, committed, true);
+            const finalState: MatchState = { cursor, misses: missBuffer };
+            matchWords(newWords, finalState, committed, true, true);
+            cursor = finalState.cursor;
+            missBuffer = finalState.misses;
             processedFinalWords = finalWords;
 
-            // Interim-Ergebnisse nur tentativ als 'correct' markieren — keine 'skipped'-Marker,
-            // damit auf Android nichts flackert, bevor ein finales Result sie bestätigt.
+            // Interim-Ergebnisse nur tentativ als 'correct' markieren — keine 'skipped'-Marker
+            // und kein Resync, damit auf Android nichts flackert oder springt, bevor ein
+            // finales Result es bestätigt.
             const tentative: Record<number, MatchStatus> = { ...committed };
             const interimWords = interimTranscript.split(/\s+/).filter(Boolean);
-            matchWords(interimWords, cursor, tentative, false);
+            const interimState: MatchState = { cursor, misses: [...missBuffer] };
+            matchWords(interimWords, interimState, tentative, false, false);
             return tentative;
         },
     };
