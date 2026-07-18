@@ -62,8 +62,12 @@ export const GlobalTextSelection: React.FC = () => {
     const handleSaveNote = () => {
         if (!selection) return;
 
-        const existingNotesStr = localStorage.getItem('dijitalMedreseNotes');
-        const existingNotes: Note[] = existingNotesStr ? JSON.parse(existingNotesStr) : [];
+        let existingNotes: Note[] = [];
+        try {
+            const existingNotesStr = localStorage.getItem('dijitalMedreseNotes');
+            existingNotes = existingNotesStr ? JSON.parse(existingNotesStr) : [];
+            if (!Array.isArray(existingNotes)) existingNotes = [];
+        } catch { existingNotes = []; }
 
         // Try to guess current module from URL or let user know
         let currentModule = "Genel";

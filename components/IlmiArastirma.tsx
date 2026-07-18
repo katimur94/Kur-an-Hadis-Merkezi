@@ -129,7 +129,7 @@ const PresentationCard: React.FC<{ question: string; response: ArastirmaRaporu }
                 <p className="text-lg text-gray-300 leading-relaxed">{response.girisOzeti}</p>
             </section>
             
-            {response.kuranDelilleri?.length && (
+            {response.kuranDelilleri?.length > 0 && (
                 <section className="mb-10">
                     <h2 className="text-3xl font-semibold text-sky-300 mb-4 font-orbitron tracking-wide">Kur'an'dan Deliller</h2>
                     <div className="space-y-6">
@@ -144,7 +144,7 @@ const PresentationCard: React.FC<{ question: string; response: ArastirmaRaporu }
                 </section>
             )}
 
-            {response.hadisDelilleri?.length && (
+            {response.hadisDelilleri?.length > 0 && (
                 <section className="mb-10">
                      <h2 className="text-3xl font-semibold text-sky-300 mb-4 font-orbitron tracking-wide">Hadis-i Şerifler</h2>
                     <div className="space-y-6">
@@ -191,6 +191,7 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
     const [error, setError] = useState<string | null>(null);
     const [currentLoadingMessage, setCurrentLoadingMessage] = useState(loadingMessages[0]);
     const [history, setHistory] = useState<HistoryItem[]>([]);
+    const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
     const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
     const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
@@ -237,11 +238,17 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
                 handleHistoryItemClick(importedItem);
             }
         } catch (e) { console.error("Failed to load or import history", e); }
+        setIsHistoryLoaded(true);
     }, [handleHistoryItemClick]);
 
     useEffect(() => {
-        localStorage.setItem('ilmiArastirmaHistory', JSON.stringify(history));
-    }, [history]);
+        if (!isHistoryLoaded) return;
+        try {
+            localStorage.setItem('ilmiArastirmaHistory', JSON.stringify(history));
+        } catch (e) {
+            console.error("Failed to save history", e);
+        }
+    }, [history, isHistoryLoaded]);
 
     useEffect(() => {
         if (chatContainerRef.current) {
@@ -270,7 +277,7 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
 
         const node = presentationRef.current;
         const { response, type } = presentationData;
-        const filename = `kapsamli-arama-${response.konuBasligi.replace(/[\s/\\?%*:|"<>]/g, '_')}`;
+        const filename = `kapsamli-arama-${(response.konuBasligi || 'rapor').replace(/[\s/\\?%*:|"<>]/g, '_')}`;
 
         if (type === 'png') {
             htmlToImage.toPng(node, { pixelRatio: 2, cacheBust: true, backgroundColor: '#0a192f' })
@@ -488,7 +495,7 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
             doc.text(`Sayfa ${i} / ${pageCount}`, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - 10, { align: 'right' });
         }
     
-        doc.save(`kapsamli-arama-${rapor.konuBasligi.replace(/[\s/\\?%*:|"<>]/g, '_')}.pdf`);
+        doc.save(`kapsamli-arama-${(rapor.konuBasligi || 'rapor').replace(/[\s/\\?%*:|"<>]/g, '_')}.pdf`);
     };
 
     const handleExport = async (index: number, type: 'copy' | 'png' | 'pdf') => {
@@ -510,7 +517,7 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
             if (rapor.fikihHukumleri?.length) { text += `== FIKIH HÜKÜMLERİ (MEZHEPLERE GÖRE) ==\n`; rapor.fikihHukumleri?.forEach(i => text += `* ${i.mezhep}:\n${i.hukum} (Kaynak: ${i.kaynak})\n\n`); }
             if (rapor.risaleINurPerspektifi) { text += `== RİSALE-İ NUR PERSPEKTİFİ ==\n${rapor.risaleINurPerspektifi.ozet || ''}\n`; rapor.risaleINurPerspektifi.iktibaslar?.forEach(i => text += `\n> "${i.metin}" (${i.kaynak})\n`); text += `\n`; }
             if (rapor.ilgiliDualar?.length) { text += `== İLGİLİ DUALAR ==\n`; rapor.ilgiliDualar?.forEach(i => text += `- ${i.anlam} (Okunuşu: ${i.okunus})\n`); }
-            navigator.clipboard.writeText(text).then(() => { setCopiedIndex(index); setTimeout(() => setCopiedIndex(null), 2000); }).finally(() => setExportingState(null));
+            navigator.clipboard.writeText(text).then(() => { setCopiedIndex(index); setTimeout(() => setCopiedIndex(null), 2000); }).catch(e => console.error('Kopyalama başarısız', e)).finally(() => setExportingState(null));
         } else if (type === 'png') {
             setPresentationData({ question, response: rapor, type });
         } else if (type === 'pdf') {
@@ -526,7 +533,7 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
     };
 
     return (
-        <div className="flex h-screen bg-gray-100 dark:bg-gray-900 relative overflow-hidden">
+        <div className="flex h-dvh bg-gray-100 dark:bg-gray-900 relative overflow-hidden">
             {notification && (<div className={`fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white z-50 animate-fade-in ${notification.type === 'success' ? 'bg-teal-500' : 'bg-red-500'}`}>{notification.message}</div>)}
             {presentationData && (
                 <div className="absolute -left-[9999px] top-0 w-[1080px]">
@@ -542,7 +549,7 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
                 <div className="p-3 border-t dark:border-gray-700">{history.length > 0 && (<button onClick={handleClearHistory} className="w-full flex items-center justify-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-red-600 text-white shadow-sm hover:bg-red-700"><TrashIcon className="w-4 h-4" /><span>Tüm Geçmişi Temizle</span></button>)}</div>
             </aside>
 
-            <div className="flex flex-col flex-1 h-screen">
+            <div className="flex flex-col flex-1 h-dvh">
                 <header className="flex-shrink-0 bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center z-20">
                     <div className="flex items-center space-x-2"><button onClick={() => setIsHistoryOpen(true)} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"><HistoryIcon className="w-5 h-5" /></button><div><h1 className="text-2xl font-bold text-gray-800 dark:text-gray-200">Kapsamlı Arama</h1><p className="text-sm text-gray-500 dark:text-gray-400">Tüm kaynaklardan derinlemesine cevaplar.</p></div></div>
                     <button onClick={onGoHome} className="flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium bg-white dark:bg-gray-700 shadow-sm hover:bg-gray-100 dark:hover:bg-gray-600"><HomeIcon className="w-5 h-5" /><span>Anasayfa</span></button>
@@ -567,12 +574,12 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
                                             <p className="text-lg leading-relaxed"><HighlightableText>{msg.content.girisOzeti}</HighlightableText></p>
                                         </section>
                                     )}
-                                    {msg.content.adimAdimAnlatim?.length && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Adım Adım Uygulama</h2><ol className="list-decimal list-inside space-y-4">{msg.content.adimAdimAnlatim?.map((item, i) => (<li key={i} className="text-lg"><strong className="font-semibold">{item.adim}:</strong> <HighlightableText>{item.aciklama}</HighlightableText></li>))}</ol></section>}
-                                    {msg.content.kuranDelilleri?.length && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Kur'an'dan Deliller</h2>{msg.content.kuranDelilleri?.map((item, i) => (<div key={i} className="p-4 mb-4 border-r-4 border-green-500 bg-green-50 dark:bg-gray-700/50 rounded-r-lg"><p dir="rtl" className="font-amiri text-2xl text-right mb-2">{item.arapca}</p><p className="italic">"<HighlightableText>{item.meal}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.referans}</p></div>))}</section>}
-                                    {msg.content.hadisDelilleri?.length && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Hadis-i Şeriflerden Deliller</h2>{msg.content.hadisDelilleri?.map((item, i) => (<div key={i} className="p-4 mb-4 border-r-4 border-blue-500 bg-blue-50 dark:bg-gray-700/50 rounded-r-lg">{item.arapca && <p dir="rtl" className="font-amiri text-xl text-right mb-2">{item.arapca}</p>}{item.rivayetEden && <p className="font-semibold text-sm text-gray-600 dark:text-gray-400 mb-2">{item.rivayetEden} rivayet ediyor:</p>}<p className="italic">"<HighlightableText>{item.turkce}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.kaynak}</p></div>))}</section>}
-                                    {msg.content.fikihHukumleri?.length && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Fıkıh Hükümleri (Mezheplere Göre)</h2><div className="grid md:grid-cols-2 gap-4">{msg.content.fikihHukumleri?.map((item, i) => (<div key={i} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"><h3 className="font-bold text-lg text-teal-600 dark:text-teal-400">{item.mezhep}</h3><p className="mt-2"><HighlightableText>{item.hukum}</HighlightableText></p><p className="text-right text-xs font-mono text-gray-500 dark:text-gray-400 mt-2">Kaynak: {item.kaynak}</p></div>))}</div></section>}
+                                    {msg.content.adimAdimAnlatim?.length > 0 && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Adım Adım Uygulama</h2><ol className="list-decimal list-inside space-y-4">{msg.content.adimAdimAnlatim?.map((item, i) => (<li key={i} className="text-lg"><strong className="font-semibold">{item.adim}:</strong> <HighlightableText>{item.aciklama}</HighlightableText></li>))}</ol></section>}
+                                    {msg.content.kuranDelilleri?.length > 0 && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Kur'an'dan Deliller</h2>{msg.content.kuranDelilleri?.map((item, i) => (<div key={i} className="p-4 mb-4 border-r-4 border-green-500 bg-green-50 dark:bg-gray-700/50 rounded-r-lg"><p dir="rtl" className="font-amiri text-2xl text-right mb-2">{item.arapca}</p><p className="italic">"<HighlightableText>{item.meal}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.referans}</p></div>))}</section>}
+                                    {msg.content.hadisDelilleri?.length > 0 && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Hadis-i Şeriflerden Deliller</h2>{msg.content.hadisDelilleri?.map((item, i) => (<div key={i} className="p-4 mb-4 border-r-4 border-blue-500 bg-blue-50 dark:bg-gray-700/50 rounded-r-lg">{item.arapca && <p dir="rtl" className="font-amiri text-xl text-right mb-2">{item.arapca}</p>}{item.rivayetEden && <p className="font-semibold text-sm text-gray-600 dark:text-gray-400 mb-2">{item.rivayetEden} rivayet ediyor:</p>}<p className="italic">"<HighlightableText>{item.turkce}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.kaynak}</p></div>))}</section>}
+                                    {msg.content.fikihHukumleri?.length > 0 && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Fıkıh Hükümleri (Mezheplere Göre)</h2><div className="grid md:grid-cols-2 gap-4">{msg.content.fikihHukumleri?.map((item, i) => (<div key={i} className="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg"><h3 className="font-bold text-lg text-teal-600 dark:text-teal-400">{item.mezhep}</h3><p className="mt-2"><HighlightableText>{item.hukum}</HighlightableText></p><p className="text-right text-xs font-mono text-gray-500 dark:text-gray-400 mt-2">Kaynak: {item.kaynak}</p></div>))}</div></section>}
                                     {msg.content.risaleINurPerspektifi && (msg.content.risaleINurPerspektifi.ozet || msg.content.risaleINurPerspektifi.iktibaslar?.length > 0) && <section className="mb-8"><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">Risale-i Nur Perspektifi</h2>{msg.content.risaleINurPerspektifi.ozet && <p className="italic mb-4"><HighlightableText>{msg.content.risaleINurPerspektifi.ozet}</HighlightableText></p>}{msg.content.risaleINurPerspektifi.iktibaslar?.map((item, i) => (<div key={i} className="p-4 border-r-4 border-purple-500 bg-purple-50 dark:bg-gray-700/50 rounded-r-lg mt-2"><p className="leading-relaxed">"<HighlightableText>{item.metin}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.kaynak}</p></div>))}</section>}
-                                    {msg.content.ilgiliDualar?.length && <section><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">İlgili Dualar</h2>{msg.content.ilgiliDualar?.map((item, i) => (<div key={i} className="p-4 mb-4 border-r-4 border-amber-500 bg-amber-50 dark:bg-gray-700/50 rounded-r-lg"><p dir="rtl" className="font-amiri text-2xl text-right mb-2">{item.arapca}</p><p className="italic text-sm text-gray-500 dark:text-gray-400 text-right mb-2">{item.okunus}</p><p className="italic">"<HighlightableText>{item.anlam}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.kaynak}</p></div>))}</section>}
+                                    {msg.content.ilgiliDualar?.length > 0 && <section><h2 className="text-2xl font-semibold mb-4 border-b-2 border-teal-500 pb-2">İlgili Dualar</h2>{msg.content.ilgiliDualar?.map((item, i) => (<div key={i} className="p-4 mb-4 border-r-4 border-amber-500 bg-amber-50 dark:bg-gray-700/50 rounded-r-lg"><p dir="rtl" className="font-amiri text-2xl text-right mb-2">{item.arapca}</p><p className="italic text-sm text-gray-500 dark:text-gray-400 text-right mb-2">{item.okunus}</p><p className="italic">"<HighlightableText>{item.anlam}</HighlightableText>"</p><p className="text-right text-sm font-semibold mt-2">{item.kaynak}</p></div>))}</section>}
                                 </div>
                             </div>)}
                         </div>
@@ -581,7 +588,7 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
                     {error && <p className="text-center text-red-500">{error}</p>}
                 </main>
 
-                <footer className="flex-shrink-0 p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-700 z-20">
+                <footer className="flex-shrink-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-white dark:bg-gray-800 border-t dark:border-gray-700 z-20">
                     <form onSubmit={handleSendMessage} className="flex items-center space-x-3 max-w-4xl mx-auto">
                         <input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder="Bir konu araştırın (örn: Abdest nasıl alınır?)..." className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" disabled={isLoading} />
                         <button type="submit" disabled={isLoading || !userInput.trim()} className="p-3 bg-teal-600 text-white rounded-lg shadow-md hover:bg-teal-700 disabled:bg-teal-400 disabled:cursor-not-allowed transition-colors"><SendIcon className="w-6 h-6" /></button>

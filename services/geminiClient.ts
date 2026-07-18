@@ -24,14 +24,23 @@ export interface GenerateContentProxyResponse {
 /** Ruft die Gemini-API über den serverseitigen Netlify-Proxy auf. */
 export const generateViaProxy = async (request: GenerateContentRequest): Promise<GenerateContentProxyResponse> => {
     let res: Response;
+    // Timeout, damit die UI bei hängenden Verbindungen nicht endlos im Lade-Zustand bleibt.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90_000);
     try {
         res = await fetch(PROXY_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(request),
+            signal: controller.signal,
         });
     } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') {
+            throw new Error('Yapay zekâ isteği zaman aşımına uğradı. Lütfen tekrar deneyin.');
+        }
         throw new Error('Yapay zekâ servisine ulaşılamadı. İnternet bağlantınızı kontrol edin.');
+    } finally {
+        clearTimeout(timeout);
     }
     const data = await res.json().catch(() => null);
     if (!res.ok) {

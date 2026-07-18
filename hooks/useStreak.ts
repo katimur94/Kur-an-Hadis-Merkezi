@@ -37,24 +37,26 @@ export function useStreak() {
 
     const markPageRead = () => {
         const today = new Date().toISOString().split('T')[0];
+        // Über das persistierte Datum statt über Closure-State entscheiden:
+        // zwei schnelle Aufrufe vor einem Re-Render sahen sonst beide
+        // pagesReadToday === 0 und zählten den Streak doppelt.
+        const lastReadDate = localStorage.getItem('quranLastReadDate');
+        const isFirstPageToday = lastReadDate !== today;
+        localStorage.setItem('quranLastReadDate', today);
 
         setPagesReadToday(prev => {
-            const newVal = prev + 1;
+            const newVal = isFirstPageToday ? 1 : prev + 1;
             localStorage.setItem('quranPagesReadToday', newVal.toString());
             return newVal;
         });
 
-        setCurrentStreak(prev => {
-            // Only increment streak if this is the FIRST page read today
-            if (pagesReadToday === 0) {
+        if (isFirstPageToday) {
+            setCurrentStreak(prev => {
                 const newStreak = prev + 1;
                 localStorage.setItem('quranStreak', newStreak.toString());
                 return newStreak;
-            }
-            return prev;
-        });
-
-        localStorage.setItem('quranLastReadDate', today);
+            });
+        }
     };
 
     return {

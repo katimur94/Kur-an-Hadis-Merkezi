@@ -128,7 +128,7 @@ const Zikirmatik: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     };
     
     return (
-        <div className="flex flex-col h-screen bg-gray-900 text-white font-sans">
+        <div className="flex flex-col h-dvh bg-gray-900 text-white font-sans">
             <header className="flex-shrink-0 p-4 flex justify-between items-center z-20">
                 <div>
                     <h1 className="text-2xl font-bold">Zikirmatik</h1>

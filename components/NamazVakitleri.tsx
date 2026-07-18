@@ -163,7 +163,10 @@ const NamazVakitleri: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                 }
                 await fetchPrayerTimes('Istanbul', 'Turkey');
                 setIsGeolocating(false);
-            }
+            },
+            // Ohne Timeout bleibt der Spinner hängen, wenn der Nutzer den
+            // Permission-Prompt ignoriert oder GPS nicht antwortet.
+            { timeout: 10000, maximumAge: 5 * 60 * 1000 }
         );
     };
 
@@ -191,10 +194,13 @@ const NamazVakitleri: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
             showNotification('Paylaşılan konum işlenirken bir hata oluştu.', 'error');
         }
 
-        const savedLocation = localStorage.getItem('namazVakitleriLocation');
-        if (savedLocation) {
-            const loc = JSON.parse(savedLocation);
-            fetchPrayerTimes(loc.city, loc.country);
+        let savedLoc: { city?: string; country?: string } | null = null;
+        try {
+            const savedLocation = localStorage.getItem('namazVakitleriLocation');
+            savedLoc = savedLocation ? JSON.parse(savedLocation) : null;
+        } catch { savedLoc = null; }
+        if (savedLoc?.city) {
+            fetchPrayerTimes(savedLoc.city, savedLoc.country ?? '');
         } else {
             handleGeolocate();
         }
@@ -286,7 +292,7 @@ const NamazVakitleri: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
             const encodedData = btoa(binaryString);
             const shareUrl = `${window.location.origin}${window.location.pathname}#/?module=namaz&v=2&data=${encodeURIComponent(encodedData)}`;
 
-            navigator.clipboard.writeText(shareUrl);
+            await navigator.clipboard.writeText(shareUrl);
             showNotification('Paylaşım linki kopyalandı!');
 
         } catch (err) {
@@ -298,7 +304,7 @@ const NamazVakitleri: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     };
 
     return (
-        <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 relative overflow-hidden">
+        <div className="flex flex-col h-dvh bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 relative overflow-hidden">
             {notification && (
                 <div className={`fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white z-50 animate-fade-in ${notification.type === 'success' ? 'bg-teal-500' : 'bg-red-500'}`}>
                     {notification.message}

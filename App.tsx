@@ -158,6 +158,10 @@ const App: React.FC = () => {
     const [isMoodModalOpen, setMoodModalOpen] = useState(false);
     const [isNotesModalOpen, setNotesModalOpen] = useState(false);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
+    // Beim Unmount laufende Ayet-Erkennung stoppen, sonst bleibt das Mikrofon aktiv.
+    useEffect(() => {
+        return () => { try { recognitionRef.current?.stop(); } catch { /* ignore */ } };
+    }, []);
     const ai = useRef(getGeminiClient());
 
     // --- Dashboard State ---
@@ -170,12 +174,15 @@ const App: React.FC = () => {
     const [isNavigating, setIsNavigating] = useState(false);
     const [continueItems, setContinueItems] = useState<ContinueItem[]>([]);
     const prayerIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const homeViewActiveRef = useRef(false);
 
     const isMobile = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
+    const notificationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+        if (notificationTimeoutRef.current) clearTimeout(notificationTimeoutRef.current);
         setNotification({ message, type });
-        setTimeout(() => setNotification(null), 3000);
+        notificationTimeoutRef.current = setTimeout(() => setNotification(null), 3000);
     };
 
     useEffect(() => {
@@ -330,7 +337,11 @@ const App: React.FC = () => {
 
                 calculateCountdown();
                 if (prayerIntervalRef.current) clearInterval(prayerIntervalRef.current);
-                prayerIntervalRef.current = setInterval(calculateCountdown, 1000);
+                // Der Fetch löst async auf — kein Intervall mehr anlegen, wenn die
+                // Home-View inzwischen verlassen wurde (sonst tickt es ewig weiter).
+                if (homeViewActiveRef.current) {
+                    prayerIntervalRef.current = setInterval(calculateCountdown, 1000);
+                }
             }
         } catch (e) {
             console.error("Prayer times fetch error:", e);
@@ -452,7 +463,15 @@ const App: React.FC = () => {
         // Helper for history-based modules
         const addHistoryItem = (key: 'hadith' | 'fiqh' | 'risale' | 'dua' | 'ilmiArastirma', label: string, icon: React.ReactNode) => {
             try {
-                const historyKey = key === 'fiqh' ? 'fiqhChatHistory' : `${key}History`;
+                // Die Module speichern unter unterschiedlichen Key-Schemata.
+                const HISTORY_KEYS: Record<string, string> = {
+                    fiqh: 'fiqhChatHistory',
+                    hadith: 'hadithSearchHistory',
+                    risale: 'risaleSearchHistory',
+                    dua: 'duaSearchHistory',
+                    ilmiArastirma: 'ilmiArastirmaHistory',
+                };
+                const historyKey = HISTORY_KEYS[key] ?? `${key}History`;
                 const historyJSON = localStorage.getItem(historyKey);
                 if (!historyJSON) return;
 
@@ -558,15 +577,19 @@ const App: React.FC = () => {
         if (currentView === 'home') {
             // Reset states related to navigation from the dashboard to prevent issues on return.
             setIsNavigating(false);
+            homeViewActiveRef.current = true;
 
             setIsPrayerLoading(true);
             navigator.geolocation.getCurrentPosition(
                 (position) => fetchPrayerTimes(position.coords.latitude, position.coords.longitude),
                 () => {
-                    const savedLocation = localStorage.getItem('namazVakitleriLocation');
-                    if (savedLocation) {
-                        const loc = JSON.parse(savedLocation);
-                        axios.get(`https://nominatim.openstreetmap.org/search?q=${loc.city},${loc.country}&format=json&limit=1`).then(res => {
+                    let loc: { city?: string; country?: string } | null = null;
+                    try {
+                        const savedLocation = localStorage.getItem('namazVakitleriLocation');
+                        loc = savedLocation ? JSON.parse(savedLocation) : null;
+                    } catch { loc = null; }
+                    if (loc?.city) {
+                        axios.get(`https://nominatim.openstreetmap.org/search?q=${loc.city},${loc.country}&format=json&limit=1`, { timeout: 10000 }).then(res => {
                             if (res.data && res.data.length > 0) {
                                 fetchPrayerTimes(res.data[0].lat, res.data[0].lon);
                             } else {
@@ -577,7 +600,10 @@ const App: React.FC = () => {
                         fetchPrayerTimes(41.0082, 28.9784); // Istanbul default
                         setPrayerLocation("İstanbul, Türkiye (Varsayılan)");
                     }
-                }
+                },
+                // Ohne Timeout bleibt der Gebetszeiten-Spinner hängen, wenn der
+                // Nutzer den Permission-Prompt ignoriert oder GPS nicht antwortet.
+                { timeout: 10000, maximumAge: 5 * 60 * 1000 }
             );
 
             const loadInspiration = () => {
@@ -606,6 +632,7 @@ const App: React.FC = () => {
         }
 
         return () => {
+            homeViewActiveRef.current = false;
             if (prayerIntervalRef.current) clearInterval(prayerIntervalRef.current);
         }
     }, [currentView, fetchNewInspiration, fetchPrayerTimes, loadContinueItems]);
@@ -946,7 +973,7 @@ const App: React.FC = () => {
         content = <IlmiArastirma onGoHome={goHome} />;
     } else {
         content = (
-            <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+            <div className="min-h-[100dvh] bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
                 {notification && (<div className={`fixed top-5 right-5 p-4 rounded-lg shadow-lg text-white z-[100] animate-fade-in ${notification.type === 'success' ? 'bg-teal-500' : 'bg-red-500'}`}>{notification.message}</div>)}
 
                 <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-8">

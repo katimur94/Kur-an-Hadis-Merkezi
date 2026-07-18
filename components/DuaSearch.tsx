@@ -94,6 +94,7 @@ const DuaSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
 
     // History State
     const [history, setHistory] = useState<HistoryItem[]>([]);
+    const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
     const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
     const [editingHistoryId, setEditingHistoryId] = useState<string | null>(null);
@@ -143,11 +144,17 @@ const DuaSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                 handleHistoryItemClick(importedItem);
             }
         } catch (e) { console.error("Failed to load or import history", e); }
+        setIsHistoryLoaded(true);
     }, [handleHistoryItemClick]);
 
     useEffect(() => {
-        localStorage.setItem('duaSearchHistory', JSON.stringify(history));
-    }, [history]);
+        if (!isHistoryLoaded) return;
+        try {
+            localStorage.setItem('duaSearchHistory', JSON.stringify(history));
+        } catch (e) {
+            console.error("Failed to save history", e);
+        }
+    }, [history, isHistoryLoaded]);
 
      useEffect(() => {
         if (presentationData && presentationRef.current) {
@@ -327,7 +334,7 @@ const DuaSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
     };
     
     return (
-        <div className="flex h-screen bg-gray-50 dark:bg-gray-900 relative overflow-hidden">
+        <div className="flex h-dvh bg-gray-50 dark:bg-gray-900 relative overflow-hidden">
             {notification && ( <div className={`fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white z-50 animate-fade-in ${notification.type === 'success' ? 'bg-teal-500' : 'bg-red-500'}`}>{notification.message}</div> )}
             {presentationData && ( <div className="absolute -left-[9999px] top-0 w-[1080px]"><div ref={presentationRef}><PresentationCard question={presentationData.question} response={presentationData.response}/></div></div> )}
             
@@ -367,7 +374,7 @@ const DuaSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                 </div>
             </aside>
 
-            <div className="flex flex-col flex-1 h-screen">
+            <div className="flex flex-col flex-1 h-dvh">
                 <header className="flex-shrink-0 bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center z-20">
                      <div className="flex items-center space-x-2">
                         <button onClick={() => setIsHistoryOpen(true)} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"><HistoryIcon className="w-5 h-5" /></button>
@@ -422,7 +429,7 @@ const DuaSearch: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) => {
                     {error && <p className="text-center text-red-500">{error}</p>}
                 </main>
 
-                <footer className="flex-shrink-0 p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-700 z-20">
+                <footer className="flex-shrink-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-white dark:bg-gray-800 border-t dark:border-gray-700 z-20">
                     <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
                         <input type="text" value={userInput} onChange={(e) => setUserInput(e.target.value)} placeholder="Bir dua konusu arayın (örn: Tuvalete girerken)..." className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" disabled={isLoading} />
                         <button type="submit" disabled={isLoading || !userInput.trim()} className="p-3 bg-teal-600 text-white rounded-lg shadow-md hover:bg-teal-700 disabled:bg-teal-400 disabled:cursor-not-allowed transition-colors"><SendIcon className="w-6 h-6" /></button>

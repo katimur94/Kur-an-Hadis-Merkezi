@@ -1,4 +1,7 @@
 import axios from 'axios';
+
+// Zentrale Instanz mit Timeout — sonst hängen Requests auf langsamem Mobilfunk unbegrenzt.
+const http = axios.create({ timeout: 15000 });
 import type { SurahSummary, CombinedAyah, Reciter, PlaylistItem } from '../types';
 
 const API_BASE_URL = 'https://api.alquran.cloud/v1';
@@ -6,7 +9,7 @@ const AUDIO_BASE_URL = 'https://cdn.islamic.network/quran/audio/128';
 
 export const getSurahList = async (): Promise<SurahSummary[]> => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/surah`);
+        const response = await http.get(`${API_BASE_URL}/surah`);
         const surahs: SurahSummary[] = response.data.data.map((s: any) => ({
             number: s.number,
             name: s.name,
@@ -24,7 +27,7 @@ export const getSurahList = async (): Promise<SurahSummary[]> => {
 export const getReciterList = async (): Promise<Reciter[]> => {
     try {
         // FIX: Corrected the endpoint to fetch audio editions.
-        const response = await axios.get(`${API_BASE_URL}/edition?format=audio`);
+        const response = await http.get(`${API_BASE_URL}/edition?format=audio`);
         const reciters: Reciter[] = response.data.data
             .map((r: any) => ({
                 id: r.identifier,
@@ -49,13 +52,16 @@ export const getReciterList = async (): Promise<Reciter[]> => {
 
 export const getPageDetail = async (page: number, reciterId: string): Promise<CombinedAyah[]> => {
     try {
-        const [arabicRes, turkishRes] = await Promise.all([
-            axios.get(`${API_BASE_URL}/page/${page}/${reciterId}`),
-            axios.get(`${API_BASE_URL}/page/${page}/tr.diyanet`)
+        // allSettled: Fällt nur die Übersetzung aus, soll die Seite trotzdem laden
+        // (arabischer Text ist der Kern) — die Übersetzung degradiert dann sanft.
+        const [arabicResult, turkishResult] = await Promise.allSettled([
+            http.get(`${API_BASE_URL}/page/${page}/${reciterId}`),
+            http.get(`${API_BASE_URL}/page/${page}/tr.diyanet`)
         ]);
+        if (arabicResult.status === 'rejected') throw arabicResult.reason;
 
-        const arabicAyahs = arabicRes.data.data.ayahs;
-        const turkishAyahs = turkishRes.data.data.ayahs;
+        const arabicAyahs = arabicResult.value.data.data.ayahs;
+        const turkishAyahs = turkishResult.status === 'fulfilled' ? turkishResult.value.data.data.ayahs : [];
 
         const combined: CombinedAyah[] = arabicAyahs.map((ayah: any) => {
             const turkishAyah = turkishAyahs.find((t: any) => t.number === ayah.number);
@@ -84,7 +90,7 @@ export const getPageDetail = async (page: number, reciterId: string): Promise<Co
 
 export const getSurahDetailForPageJump = async (surahNumber: number): Promise<{ page: number }> => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/surah/${surahNumber}`);
+        const response = await http.get(`${API_BASE_URL}/surah/${surahNumber}`);
         // The page number of the first ayah of the surah is what we need.
         const page = response.data.data.ayahs[0].page;
         const result = { page };
@@ -97,7 +103,7 @@ export const getSurahDetailForPageJump = async (surahNumber: number): Promise<{ 
 
 export const getAyahDetails = async (surahNumber: number, ayahInSurah: number): Promise<{ page: number, arabicText: string, number: number }> => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/ayah/${surahNumber}:${ayahInSurah}`);
+        const response = await http.get(`${API_BASE_URL}/ayah/${surahNumber}:${ayahInSurah}`);
         const ayahData = response.data.data;
         const result = {
             page: ayahData.page,
@@ -124,7 +130,7 @@ const createPlaylistFromAyahs = (ayahs: any[]): PlaylistItem[] => {
 
 export const getJuzVerses = async (juzNumber: number, reciterId: string): Promise<PlaylistItem[]> => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/juz/${juzNumber}/${reciterId}`);
+        const response = await http.get(`${API_BASE_URL}/juz/${juzNumber}/${reciterId}`);
         return createPlaylistFromAyahs(response.data.data.ayahs);
     } catch (error) {
         console.error(`Error fetching juz ${juzNumber} verses:`, error);
@@ -134,7 +140,7 @@ export const getJuzVerses = async (juzNumber: number, reciterId: string): Promis
 
 export const getSurahVerses = async (surahNumber: number, reciterId: string): Promise<PlaylistItem[]> => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/surah/${surahNumber}/${reciterId}`);
+        const response = await http.get(`${API_BASE_URL}/surah/${surahNumber}/${reciterId}`);
         return createPlaylistFromAyahs(response.data.data.ayahs);
     } catch (error) {
         console.error(`Error fetching surah ${surahNumber} verses:`, error);

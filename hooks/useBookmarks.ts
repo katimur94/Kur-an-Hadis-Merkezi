@@ -19,6 +19,9 @@ export function useBookmarks() {
 
     useEffect(() => {
         localStorage.setItem('quranBookmarks', JSON.stringify(bookmarks));
+        // 'storage' feuert nur in anderen Tabs — im selben Tab lauscht das
+        // Notiz-/Lesezeichen-Modal auf dieses Custom-Event.
+        window.dispatchEvent(new Event('notesUpdated'));
     }, [bookmarks]);
 
     const toggleBookmark = (ayahNumber: number, surahName: string, numberInSurah: number, page: number) => {

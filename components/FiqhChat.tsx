@@ -459,7 +459,7 @@ Cevabın her zaman bu yapılandırılmış formatta ve JSON olarak dönmelidir. 
     };
 
     return (
-        <div className="flex h-screen bg-gray-50 dark:bg-gray-900 relative overflow-hidden">
+        <div className="flex h-dvh bg-gray-50 dark:bg-gray-900 relative overflow-hidden">
             {notification && (
                 <div className={`fixed bottom-5 right-5 p-4 rounded-lg shadow-lg text-white z-50 animate-fade-in ${notification.type === 'success' ? 'bg-teal-500' : 'bg-red-500'}`}>
                     {notification.message}
@@ -522,7 +522,7 @@ Cevabın her zaman bu yapılandırılmış formatta ve JSON olarak dönmelidir. 
                 </div>
             </aside>
 
-            <div className="flex flex-col flex-1 h-screen">
+            <div className="flex flex-col flex-1 h-dvh">
                 <header className="flex-shrink-0 bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center z-20">
                     <div className="flex items-center space-x-2">
                         <button onClick={() => setIsHistoryOpen(true)} className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700">
@@ -670,7 +670,7 @@ Cevabın her zaman bu yapılandırılmış formatta ve JSON olarak dönmelidir. 
                     {error && <p className="text-center text-red-500">{error}</p>}
                 </main>
 
-                <footer className="flex-shrink-0 p-4 bg-white dark:bg-gray-800 border-t dark:border-gray-700 z-20">
+                <footer className="flex-shrink-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-white dark:bg-gray-800 border-t dark:border-gray-700 z-20">
                     <form onSubmit={handleSendMessage} className="flex items-center space-x-3">
                         <input
                             type="text"

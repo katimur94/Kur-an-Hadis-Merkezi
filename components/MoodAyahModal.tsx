@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { getGeminiClient, getGeminiModel } from '../services/geminiClient';
+import { getAyahDetails } from '../services/api';
 import Spinner from './Spinner';
 
 interface MoodAyahModalProps {
@@ -39,6 +40,7 @@ const MoodAyahModal: React.FC<MoodAyahModalProps> = ({ isOpen, setIsOpen, onGoTo
     const [status, setStatus] = useState<'idle' | 'loading' | 'result' | 'error'>('idle');
     const [result, setResult] = useState<any>(null);
     const [selectedMood, setSelectedMood] = useState<string>('');
+    const [isNavigating, setIsNavigating] = useState(false);
     const ai = useRef(getGeminiClient());
 
     const fetchAyahForMood = async (moodQuery: string, label: string) => {
@@ -152,12 +154,25 @@ Cevabını SADECE aşağıdaki JSON formatında, hiçbir ek yorum eklemeden dön
                                 <button onClick={() => setStatus('idle')} className="flex-1 py-3 px-6 text-sm font-bold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all shadow-sm">
                                     Başka Bir Duygu Seç
                                 </button>
-                                <button onClick={() => {
-                                    setIsOpen(false);
-                                    onGoToAyah(1, 1);
+                                <button onClick={async () => {
+                                    if (isNavigating) return;
+                                    setIsNavigating(true);
+                                    try {
+                                        // Die echte Seite der Ayah auflösen — vorher sprang der
+                                        // Button hart auf Seite 1 statt zur gefundenen Ayah.
+                                        const details = await getAyahDetails(result.surahNumber, result.ayahInSurah);
+                                        setIsOpen(false);
+                                        onGoToAyah(details.page, details.number);
+                                    } catch (e) {
+                                        console.error('Ayet sayfası bulunamadı', e);
+                                        setStatus('error');
+                                    } finally {
+                                        setIsNavigating(false);
+                                    }
                                 }}
-                                    className="flex-1 py-3 px-6 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-all shadow-md shadow-teal-500/30">
-                                    Okuyucuya Git (Sayfa 1)
+                                    disabled={isNavigating}
+                                    className="flex-1 py-3 px-6 text-sm font-bold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-all shadow-md shadow-teal-500/30 disabled:opacity-60">
+                                    {isNavigating ? 'Açılıyor...' : 'Okuyucuda Aç'}
                                 </button>
                             </div>
                         </div>

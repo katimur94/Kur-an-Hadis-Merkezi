@@ -90,9 +90,11 @@ export const HighlightableText: React.FC<{ children: React.ReactNode }> = ({ chi
                     return (
                         <span
                             key={i}
-                            className="underline decoration-dotted decoration-teal-500 cursor-pointer"
+                            className="underline decoration-dotted decoration-teal-500 cursor-pointer touch-manipulation"
                             onMouseEnter={(e) => showTooltip(part, e.currentTarget.getBoundingClientRect())}
                             onMouseLeave={hideTooltip}
+                            // Touch-Geräte haben kein Hover — Antippen öffnet den Tooltip.
+                            onClick={(e) => { e.stopPropagation(); showTooltip(part, e.currentTarget.getBoundingClientRect()); }}
                         >
                             {part}
                         </span>
@@ -401,6 +403,14 @@ export const LugatContextProvider: React.FC<{ children: ReactNode }> = ({ childr
     const hideTooltip = useCallback(() => {
         setTooltipState(prev => ({ ...prev, isOpen: false }));
     }, []);
+
+    // Auf Touch-Geräten (kein mouseleave): Tipp irgendwo anders schließt den Tooltip.
+    useEffect(() => {
+        if (!tooltipState.isOpen) return;
+        const close = () => hideTooltip();
+        document.addEventListener('click', close);
+        return () => document.removeEventListener('click', close);
+    }, [tooltipState.isOpen, hideTooltip]);
 
     const value = { showLugatPopup, hideLugat, searchLugatTerm, state, history, deleteFromHistory, clearHistory, showTooltip, hideTooltip };
 

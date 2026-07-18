@@ -30,6 +30,7 @@ export function useQuranAudio({
     const [activePlaybackId, setActivePlaybackId] = useState<number | null>(null);
 
     const audioRef = useRef<HTMLAudioElement>(null);
+    const preloadAudioRef = useRef<HTMLAudioElement | null>(null);
     const isAutoNavigating = useRef(false);
 
     const handleStop = useCallback(() => {
@@ -105,13 +106,14 @@ export function useQuranAudio({
         if (isPlaying && currentTrackIndex !== -1) {
             playTrack(currentTrackIndex);
 
-            // Eagerly preload the next track to avoid audio gaps between ayahs
+            // Nächsten Track vorladen — über EIN wiederverwendetes Element statt
+            // pro Trackwechsel ein neues Audio-Objekt zu erzeugen (Memory/Bandbreite).
             if (currentTrackIndex + 1 < playlist.length) {
                 const nextTrack = playlist[currentTrackIndex + 1];
                 if (nextTrack && nextTrack.audioUrl) {
-                    const preloadAudio = new Audio();
-                    preloadAudio.src = nextTrack.audioUrl;
-                    preloadAudio.preload = 'auto';
+                    if (!preloadAudioRef.current) preloadAudioRef.current = new Audio();
+                    preloadAudioRef.current.src = nextTrack.audioUrl;
+                    preloadAudioRef.current.preload = 'auto';
                 }
             }
         }

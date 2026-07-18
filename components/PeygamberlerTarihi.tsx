@@ -304,6 +304,9 @@ const PeygamberlerTarihi: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) =>
         setIsDownloading(true);
         setError(null);
         try {
+            // Erst rendern lassen und Custom-Fonts laden, sonst wird das PNG leer/unvollständig.
+            await document.fonts.ready;
+            await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
             const dataUrl = await htmlToImage.toPng(presentationRef.current, {
                 quality: 0.98,
                 pixelRatio: 2,
@@ -372,7 +375,7 @@ const PeygamberlerTarihi: React.FC<{ onGoHome: () => void }> = ({ onGoHome }) =>
     }
 
     return (
-        <div className="font-roboto bg-gray-900 text-white min-h-screen p-4 flex flex-col items-center">
+        <div className="font-roboto bg-gray-900 text-white min-h-[100dvh] p-4 flex flex-col items-center">
              {presentationData && (
                 <div className="fixed -left-[9999px] top-0 w-[1080px] p-8">
                     <div ref={presentationRef}>

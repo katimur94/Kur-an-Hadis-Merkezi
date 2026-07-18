@@ -123,48 +123,42 @@ const QuranReader: React.FC<QuranReaderProps> = ({ onGoHome, initialPage, highli
     // Swipe handlers for mobile page turning
     const [touchStartX, setTouchStartX] = useState<number | null>(null);
     const [touchEndX, setTouchEndX] = useState<number | null>(null);
+    const [touchStartY, setTouchStartY] = useState<number | null>(null);
+    const [touchEndY, setTouchEndY] = useState<number | null>(null);
 
     const onTouchStart = (e: React.TouchEvent) => {
         setTouchEndX(null);
+        setTouchEndY(null);
         setTouchStartX(e.targetTouches[0].clientX);
+        setTouchStartY(e.targetTouches[0].clientY);
     };
 
     const onTouchMove = (e: React.TouchEvent) => {
         setTouchEndX(e.targetTouches[0].clientX);
+        setTouchEndY(e.targetTouches[0].clientY);
     };
 
-    const onTouchEnd = () => {
-        if (!touchStartX || !touchEndX) return;
-        const distance = touchStartX - touchEndX;
-        const minSwipeDistance = 75;
-
-        if (distance > minSwipeDistance) {
-            // Swiped Left -> Next Page (since Quran reads Right to Left, sometimes left swipe = next page is natural on western UI)
-            if (currentPage > 1) jumpToPage(currentPage - 1);
-            // In Arabic/Quran standard: Left swipe = next page, Right swipe = prev page. Wait, if reading right to left, next page is on the left. So to go to next page, you pull from the left to right (swipe right). Very often apps just use left = next, right = prev for western users. Let's make Left Swipe = Page + 1, Right Swipe = Page - 1.
-            // Actually: swipe left (finger moves left) = next page ? Let's use standard:
-        }
-    };
-
-    // Refined swipe logic:
     const onTouchEndFixed = () => {
-        if (!touchStartX || !touchEndX) return;
+        if (touchStartX === null || touchEndX === null) return;
         const distance = touchStartX - touchEndX;
+        const verticalDistance = touchStartY !== null && touchEndY !== null ? Math.abs(touchStartY - touchEndY) : 0;
         const minSwipeDistance = 50;
 
+        // Nur blättern, wenn die Geste klar horizontal ist — sonst löst
+        // vertikales Scrollen mit leichter Drift ungewollt Seitenwechsel aus.
+        if (Math.abs(distance) <= verticalDistance) return;
+
         if (distance > minSwipeDistance) {
-            // Swipe Left (finger moves left). In a right-to-left book, this goes to the PREVIOUS page. But in UI terms, it often means NEXT.
-            // Let's make it intuitive: Swipe Left -> Next Page.
             if (currentPage < TOTAL_PAGES) jumpToPage(currentPage + 1);
         } else if (distance < -minSwipeDistance) {
-            // Swipe Right (finger moves right) -> Prev Page
             if (currentPage > 1) jumpToPage(currentPage - 1);
         }
     };
 
     return (
-        <div className="flex h-screen bg-gray-50 dark:bg-[#0f172a] text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">
-            <audio ref={audio.audioRef} onEnded={audio.handleAudioEnded} />
+        <div className="flex h-dvh bg-gray-50 dark:bg-[#0f172a] text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300">
+            {/* onError: bei 404/Netzwerkfehler eines Tracks zum nächsten springen statt stumm stehenzubleiben */}
+            <audio ref={audio.audioRef} onEnded={audio.handleAudioEnded} onError={audio.handleAudioEnded} />
 
             <QuranSidebar
                 isOpen={isSidebarOpen && !isFocusMode}
