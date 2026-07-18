@@ -86,17 +86,20 @@ Projeyi kendi bilgisayarınızda çalıştırmak için aşağıdaki adımları i
     ```
 
 3.  **API Anahtarını Ayarlayın:**
-    *   Projenin ana dizininde `.env.local` adında bir dosya oluşturun.
-    *   Dosyanın içine Google Gemini API anahtarınızı aşağıdaki gibi ekleyin:
+    *   Gemini API anahtarı artık istemci paketine (bundle) gömülmez; tüm yapay zekâ istekleri `netlify/functions/gemini.ts` üzerinden sunucu tarafında yapılır.
+    *   Projenin ana dizininde `.env` adında bir dosya oluşturun ve anahtarınızı ekleyin:
         ```env
-        VITE_API_KEY=SIZIN_GEMINI_API_ANAHTARINIZ
+        GEMINI_API_KEY=SIZIN_GEMINI_API_ANAHTARINIZ
         ```
+    *   Netlify üzerinde ise aynı `GEMINI_API_KEY` değişkenini **Site settings → Environment variables** bölümünde tanımlayın.
 
 4.  **Geliştirme Sunucusunu Başlatın:**
-    ```sh
-    npm run dev
-    ```
-    Uygulama artık `http://localhost:5173` adresinde çalışıyor olacaktır.
+    *   Netlify Functions'ın (Gemini proxy) yerelde de çalışması için [Netlify CLI](https://docs.netlify.com/cli/get-started/) ile başlatın:
+        ```sh
+        npx netlify dev
+        ```
+        Uygulama `http://localhost:8888` adresinde, fonksiyonlarla birlikte çalışır.
+    *   Sadece `npm run dev` (`http://localhost:5173`) ile başlatırsanız arayüz çalışır, ancak `/.netlify/functions/gemini` bulunamadığı için yapay zekâ özellikleri devre dışı kalır.
 
 ---
 
