@@ -169,6 +169,7 @@ export interface ArastirmaHadisDelili {
     kaynak: string;
     arapca: string;
     turkce: string;
+    rivayetEden?: string;
 }
 
 export interface ArastirmaFikihHukmu {

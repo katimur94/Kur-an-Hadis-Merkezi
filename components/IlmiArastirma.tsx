@@ -478,7 +478,7 @@ const IlmiArastirma: React.FC<{ onGoHome: () => void; }> = ({ onGoHome }) => {
             });
         }
 
-        const pageCount = doc.internal.getNumberOfPages();
+        const pageCount = doc.getNumberOfPages();
         for (let i = 1; i <= pageCount; i++) {
             doc.setPage(i);
             doc.setFont('Amiri', 'normal');
