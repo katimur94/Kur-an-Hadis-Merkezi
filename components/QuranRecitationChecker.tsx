@@ -4,7 +4,7 @@ import { getGeminiClient, getGeminiModel } from '../services/geminiClient';
 import { getSurahList, getPageDetail, getSurahDetailForPageJump } from '../services/api';
 import { surahPageRanges } from '../services/quranData';
 import { createRecitationMatcher, normalizeText, isWordMatch, type RecitationMatcher, type MatchStatus } from '../services/recitationMatcher';
-import { useRecitationRecognition, type RecognitionStopReason } from '../hooks/useRecitationRecognition';
+import { useRecitationRecognition, IS_ANDROID, type RecognitionStopReason } from '../hooks/useRecitationRecognition';
 import type { SurahSummary, CombinedAyah, WordAnalysisResult, PageAnalysis } from '../types';
 import Spinner from './Spinner';
 
@@ -278,8 +278,9 @@ const QuranRecitationChecker: React.FC<{ onGoHome: () => void }> = ({ onGoHome }
         setLiveWordStatuses(mapped);
     }, [finalTranscript, interimTranscript, recitationStatus]);
 
-    // Live Auto-Scroll Effect
+    // Live Auto-Scroll Effect — auf Android deaktiviert (kämpft dort mit dem Touch-Scrolling)
     useEffect(() => {
+        if (IS_ANDROID) return;
         if (recitationStatus === 'recording' && pageWords.length > 0) {
             let unreadIdx = 0;
             while (unreadIdx < pageWords.length && (sessionWordStatuses[unreadIdx] || liveWordStatuses[unreadIdx]?.status === 'correct')) {

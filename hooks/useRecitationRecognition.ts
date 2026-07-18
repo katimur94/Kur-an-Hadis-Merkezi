@@ -96,7 +96,7 @@ const MIME_CANDIDATES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'a
 // Deshalb läuft die Erkennung auf Android über unseren Gemini-Proxy: der
 // MediaRecorder nimmt unterbrechungsfrei auf (kein Ton, keine Lücken) und kurze
 // Segmente werden serverseitig transkribiert.
-const IS_ANDROID = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
+export const IS_ANDROID = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
 const USE_CLOUD_STT = IS_ANDROID;
 // ~5s-Segmente ≈ 12 Anfragen/Minute — bleibt unter den Free-Tier-Limits von Flash-Lite.
 const CLOUD_CHUNK_MS = 5000;
