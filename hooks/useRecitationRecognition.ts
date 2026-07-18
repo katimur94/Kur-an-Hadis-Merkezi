@@ -80,9 +80,19 @@ export interface UseRecitationRecognitionResult {
 const DEFAULT_MAX_DURATION_MS = 5 * 60 * 1000;
 const RESTART_THROTTLE_MS = 300;
 const MAX_CONSECUTIVE_RESTARTS = 5;
+// Endet eine Recognition-Session schneller als das nach dem Start, zählt sie
+// als Fehlschlag; längere Sessions (normale Android-Pausenzyklen) nicht.
+const FAST_FAIL_MS = 1500;
 // Echte Fehler-Codes der Web Speech API, bei denen ein Weitermachen sinnlos ist.
 const FATAL_ERRORS = new Set(['not-allowed', 'service-not-allowed', 'audio-capture']);
 const MIME_CANDIDATES = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg'];
+
+// Android Chrome kann SpeechRecognition und getUserMedia-Audio NICHT gleichzeitig:
+// die Erkennung läuft über den Google-Systemdienst, und Android gibt das Mikrofon
+// nur an einen Prozess. Hält die Seite den Stream (MediaRecorder), liefert die
+// Erkennung schlicht keine Ergebnisse (https://issues.chromium.org/issues/41083534).
+// Deshalb auf Android: keine parallele Audio-Aufnahme, Analyse fällt auf Text zurück.
+const IS_ANDROID = typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent);
 
 /** Hängt ein finales Segment an; identische Suffixe werden dedupliziert (Android liefert Results teils doppelt). */
 const appendFinalSegment = (accumulated: string, segment: string): string => {
@@ -113,6 +123,7 @@ export const useRecitationRecognition = (options: UseRecitationRecognitionOption
     const finalTranscriptRef = useRef('');
     const restartCountRef = useRef(0);
     const lastRestartAtRef = useRef(0);
+    const lastStartAtRef = useRef(0);
     const restartTimerRef = useRef<number | null>(null);
     const maxDurationTimerRef = useRef<number | null>(null);
     const wakeLockRef = useRef<any>(null);
@@ -230,6 +241,14 @@ export const useRecitationRecognition = (options: UseRecitationRecognitionOption
         };
 
         rec.onerror = (event) => {
+            // Konflikt-Schutz: Meldet die Erkennung 'audio-capture', während unser
+            // MediaRecorder das Mikrofon hält, blockieren sich beide (v. a. Android).
+            // Dann den Recorder freigeben und den Auto-Restart weiterversuchen lassen.
+            if (event.error === 'audio-capture' && mediaRecorderRef.current) {
+                console.warn('audio-capture während MediaRecorder aktiv — Audio-Aufnahme wird beendet, Erkennung läuft weiter.');
+                stopMediaRecorder();
+                return;
+            }
             if (FATAL_ERRORS.has(event.error)) {
                 setError('Mikrofon hatası: ' + event.error + '. Lütfen mikrofon iznini kontrol edin.');
                 finalizeStop('error');
@@ -239,38 +258,41 @@ export const useRecitationRecognition = (options: UseRecitationRecognitionOption
 
         rec.onend = () => {
             if (!intentRef.current || !sessionActiveRef.current) return;
-            if (restartCountRef.current >= MAX_CONSECUTIVE_RESTARTS) {
+            // Nur schnell sterbende Sessions als Fehlschlag zählen — normale
+            // Android-Zyklen (Erkennung endet nach jeder Sprechpause) nicht.
+            if (Date.now() - lastStartAtRef.current < FAST_FAIL_MS) {
+                restartCountRef.current += 1;
+            } else {
+                restartCountRef.current = 0;
+            }
+            if (restartCountRef.current > MAX_CONSECUTIVE_RESTARTS) {
                 setError('Konuşma tanıma sürekli kesiliyor. Lütfen internet bağlantınızı ve mikrofonunuzu kontrol edip tekrar deneyin.');
                 finalizeStop('error');
                 return;
             }
-            restartCountRef.current += 1;
             const wait = Math.max(0, RESTART_THROTTLE_MS - (Date.now() - lastRestartAtRef.current));
             restartTimerRef.current = window.setTimeout(() => {
                 restartTimerRef.current = null;
                 if (!intentRef.current || !sessionActiveRef.current) return;
                 lastRestartAtRef.current = Date.now();
+                lastStartAtRef.current = Date.now();
                 try {
-                    rec.start();
-                } catch {
-                    // Instanz ist in einem kaputten Zustand → frische Instanz versuchen.
-                    try {
-                        const fresh = createRecognition();
-                        if (fresh) {
-                            recognitionRef.current = fresh;
-                            fresh.start();
-                        }
-                    } catch (e) {
-                        console.error('Konuşma tanıma yeniden başlatılamadı', e);
-                        setError('Konuşma tanıma yeniden başlatılamadı. Lütfen tekrar deneyin.');
-                        finalizeStop('error');
-                    }
+                    // Immer eine frische Instanz: Android startet dieselbe Instanz
+                    // teils kommentarlos nicht neu (kein Fehler, keine Events).
+                    const fresh = createRecognition();
+                    if (!fresh) throw new Error('SpeechRecognition unavailable');
+                    recognitionRef.current = fresh;
+                    fresh.start();
+                } catch (e) {
+                    console.error('Konuşma tanıma yeniden başlatılamadı', e);
+                    setError('Konuşma tanıma yeniden başlatılamadı. Lütfen tekrar deneyin.');
+                    finalizeStop('error');
                 }
             }, wait);
         };
 
         return rec;
-    }, [lang, finalizeStop]);
+    }, [lang, finalizeStop, stopMediaRecorder]);
 
     const start = useCallback((): boolean => {
         if (sessionActiveRef.current) return true;
@@ -287,11 +309,17 @@ export const useRecitationRecognition = (options: UseRecitationRecognitionOption
         audioChunksRef.current = [];
         restartCountRef.current = 0;
         lastRestartAtRef.current = Date.now();
+        lastStartAtRef.current = Date.now();
         sessionActiveRef.current = true;
         intentRef.current = true;
         recognitionRef.current = rec;
 
-        void startMediaRecorder();
+        // Auf Android würde der parallele getUserMedia-Stream die Spracherkennung
+        // blockieren (Mikrofon-Konflikt mit dem System-Erkennungsdienst) —
+        // dort keine Audio-Aufnahme, die Analyse nutzt den Text-Fallback.
+        if (!IS_ANDROID) {
+            void startMediaRecorder();
+        }
         void requestWakeLock();
         maxDurationTimerRef.current = window.setTimeout(() => finalizeStop('maxDuration'), maxDurationMs);
 
